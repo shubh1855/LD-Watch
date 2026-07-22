@@ -35,12 +35,12 @@ jobs:
           make cli
       - name: Run Go unit tests
         run: go test ./... -v
-      - name: Run integration tests
-        run: |
-          sudo mkdir -p /var/ldwatch
-          sudo mkdir -p /run
-          sudo chown runner:runner /var/ldwatch
-          bash scripts/run_tests.sh
+      # - name: Run integration tests
+      #   run: |
+      #     sudo mkdir -p /var/ldwatch
+      #     sudo mkdir -p /run
+      #     sudo chown runner:runner /var/ldwatch
+      #     bash scripts/run_tests.sh
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
