@@ -26,13 +26,13 @@ audit:
 ## Build the Go collector daemon
 collector: $(BINARY_DIR)
 	@echo "[make] Building collector..."
-	cd collector && go build -o ../$(BINARY_DIR)/collector ./...
+	cd collector && go build -o ../$(BINARY_DIR)/collector ./cmd
 	@echo "[make] collector built."
 
 ## Build the Go CLI
 cli: $(BINARY_DIR)
 	@echo "[make] Building ldwatch-cli..."
-	cd cli && go build -o ../$(BINARY_DIR)/ldwatch-cli ./...
+	cd cli && go build -o ../$(BINARY_DIR)/ldwatch-cli ./cmd
 	@echo "[make] ldwatch-cli built."
 
 ## Run all tests
