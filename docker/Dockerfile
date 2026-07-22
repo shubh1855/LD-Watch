@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y \
   && rm -rf /var/lib/apt/lists/*
 
 # ─── Go Installation ───────────────────────────────────────────────────────────
-ENV GO_VERSION=1.22.0
+ENV GO_VERSION=1.26.0
 ENV GOPATH=/go
 ENV PATH=$PATH:/usr/local/go/bin:$GOPATH/bin
 

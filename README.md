@@ -339,7 +339,7 @@ Examples:
 
 **Phase 1 — Setup**
 
-- [ ] Repo created, all members have access
+- [x] Repo created, all members have access
 - [ ] Branch protection rules set on `main`
 - [ ] `docker/Dockerfile` builds successfully
 - [ ] Top-level `Makefile` targets defined: `all`, `audit`, `collector`, `cli`, `test`, `clean`
