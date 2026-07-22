@@ -1,0 +1,56 @@
+version: '3.8'
+services:
+  # ── Development shell ──────────────────────────────────────────────────────
+  # Use this for day-to-day development and testing
+  # Run: docker compose run --rm dev
+  dev:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: ldwatch-dev
+    volumes:
+      # Mount the repo into the container so edits reflect immediately
+      - .:/ld-watch
+    working_dir: /ld-watch
+    # Needed for LD_AUDIT to work correctly inside the container
+    security_opt:
+      - seccomp:unconfined
+    # Needed for strace and low-level debugging
+    cap_add:
+      - SYS_PTRACE
+    stdin_open: true
+    tty: true
+    command: /bin/bash
+  # ── Attack scenario testing ────────────────────────────────────────────────
+  # Isolated environment specifically for running attack simulations
+  # Run: docker compose run --rm attack-test
+  attack-test:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: ldwatch-attack-test
+    volumes:
+      - .:/ld-watch
+    working_dir: /ld-watch
+    security_opt:
+      - seccomp:unconfined
+    cap_add:
+      - SYS_PTRACE
+    stdin_open: true
+    tty: true
+    # Run attack scenario validation directly
+    command: bash scripts/run_tests.sh
+  # ── CI simulation ─────────────────────────────────────────────────────────
+  # Simulates what GitHub Actions runs — use before pushing
+  # Run: docker compose run --rm ci
+  ci:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: ldwatch-ci
+    volumes:
+      - .:/ld-watch
+    working_dir: /ld-watch
+    security_opt:
+      - seccomp:unconfined
+    command: bash -c "make all && make test"
