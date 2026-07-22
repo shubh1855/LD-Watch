@@ -1,0 +1,29 @@
+# Git
+.git
+.gitignore
+
+# Build outputs — rebuilt inside container
+bin/
+audit/audit.so
+
+# Go cache
+vendor/
+
+# Test artifacts
+/tmp/
+tests/attack-scenarios/**/*.so
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# SQLite database files (runtime only)
+*.db
+*.db-shm
+*.db-wal
