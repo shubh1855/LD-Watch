@@ -341,20 +341,20 @@ Examples:
 
 - [x] Repo created, all members have access
 - [ ] Branch protection rules set on `main`
-- [ ] `docker/Dockerfile` builds successfully
-- [ ] Top-level `Makefile` targets defined: `all`, `audit`, `collector`, `cli`, `test`, `clean`
-- [ ] `go.mod` initialized
+- [x] `docker/Dockerfile` builds successfully
+- [x] Top-level `Makefile` targets defined: `all`, `audit`, `collector`, `cli`, `test`, `clean`
+- [x] `go.mod` initialized
 - [ ] `scripts/setup.sh` installs all deps on fresh Ubuntu 22.04
 - [ ] GitHub Actions CI skeleton runs on push
 
 **Phase 2 — Audit Library**
 
-- [ ] `la_version()` returns `LAV_CURRENT`
-- [ ] `la_objopen()` fires and logs SO path + PID
-- [ ] `la_objsearch()` captures `LA_SER_LIBPATH` flag (LD_LIBRARY_PATH used)
-- [ ] `la_symbind64()` captures symbol name + resolved address
+- [x] `la_version()` returns `LAV_CURRENT`
+- [x] `la_objopen()` fires and logs SO path + PID
+- [x] `la_objsearch()` captures `LA_SER_LIBPATH` flag (LD_LIBRARY_PATH used)
+- [x] `la_symbind64()` captures symbol name + resolved address
 - [ ] IPC sender writes `ldwatch_event_t` to Unix socket
-- [ ] Smoke test: `LD_AUDIT=./audit/audit.so ls` prints expected SOs
+- [x] Smoke test: `LD_AUDIT=./audit/audit.so ls` prints expected SOs
 
 **Phase 3 — Collector Daemon**
 
