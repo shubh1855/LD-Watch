@@ -1,7 +1,7 @@
 # LD-Watch — Audit Library Makefile
 
 CC     = gcc
-CFLAGS = -shared -fPIC -Wall -Wextra -O2 -g
+CFLAGS = -shared -fPIC -Wall -Wextra -O2 -g -I./include
 SRCS   = src/audit.c src/hooks.c src/ipc.c
 OUT    = audit.so
 
