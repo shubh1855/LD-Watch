@@ -41,3 +41,4 @@ Thumbs.db
 /tmp/stolen.log
 /tmp/fakelibs/
 /tmp/hijack/
+tests/fixtures/probe
