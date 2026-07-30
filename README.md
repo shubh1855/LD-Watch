@@ -740,11 +740,11 @@ per environment.
 
 ### Papers
 
-1. **Static Detection of Shared Object Loadings on Linux**
-   IEEE — https://ieeexplore.ieee.org/document/7155916
+1. **Resolving the Correct Library: Loader-Level Defense Against SO Hijacking (2026)**
+   arXiv — https://arxiv.org/abs/2605.26665
 
-2. **Libsec: A Hardware Virtualization-Based Isolation for Shared Library**
-   IEEE — https://ieeexplore.ieee.org/abstract/document/8291908
+2. **User-space Library Rootkits Revisited: Are User-space Detection Mechanisms Futile? (2025)**
+   arXiv — https://arxiv.org/abs/2506.07827
 
 3. **Malware Detection on Linux Using Runtime Opcode Tracing (2024)**
    IEEE — https://ieeexplore.ieee.org/document/10753555
@@ -752,23 +752,11 @@ per environment.
 4. **Anomaly Based Malware Threat Detection on Linux Systems (2024)**
    IEEE — https://ieeexplore.ieee.org/document/10538975
 
-5. **Deep Learning Approaches for Malware Detection (2025)**
-   IEEE — https://ieeexplore.ieee.org/document/11048875
+5. **Trace of the Times: Rootkit Detection through Temporal Anomalies (2025)**
+   arXiv — https://arxiv.org/html/2503.02402
 
-6. **User-space Library Rootkits Revisited (2025)**
-   arXiv:2506.07827 — https://arxiv.org/abs/2506.07827
-
-7. **Trace of the Times: Rootkit Detection through Temporal Anomalies (2025)**
-   arXiv — https://arxiv.org/html/2503.02402v1
-
-8. **Resolving the Correct Library: Loader-Level Defense Against SO Hijacking (2026)**
-   arXiv:2605.26665 — https://arxiv.org/abs/2605.26665
-
-9. **Unmasking the Unseen: Modern Linux Rootkits and Detection (2025)**
+6. **Unmasking the Unseen: Modern Linux Rootkits and Detection (2025)**
    Virus Bulletin — https://www.virusbulletin.com/uploads/pdf/conference/vb2025/papers/Unmasking-the-unseen-a-deep-dive-into-modern-Linux-rootkits-and-their-detection.pdf
-
-10. **LinkPro: eBPF Rootkit Analysis (2025)**
-    Synacktiv — https://www.synacktiv.com/en/publications/linkpro-ebpf-rootkit-analysis
 
 ### Threat Classification
 
