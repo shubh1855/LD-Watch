@@ -1,0 +1,24 @@
+# Shell scripts
+*.sh text eol=lf
+
+# Docker files
+Dockerfile* text eol=lf
+docker-compose*.yml text eol=lf
+
+# YAML
+*.yml text=auto
+*.yaml text=auto
+
+# Makefiles
+Makefile text eol=lf
+
+# Windows scripts
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary
