@@ -1,16 +1,33 @@
 # Shell scripts
 *.sh text eol=lf
 
-# Docker files
+# Docker
+Dockerfile text eol=lf
 Dockerfile* text eol=lf
-docker-compose*.yml text eol=lf
+docker-compose.yml text eol=lf
+docker-compose.*.yml text eol=lf
 
 # YAML
-*.yml text=auto
-*.yaml text=auto
+*.yml text eol=lf
+*.yaml text eol=lf
 
 # Makefiles
 Makefile text eol=lf
+
+# Go
+*.go text eol=lf
+go.mod text eol=lf
+go.sum text eol=lf
+
+# C/C++
+*.c text eol=lf
+*.h text eol=lf
+*.cpp text eol=lf
+*.hpp text eol=lf
+
+# Markdown & text
+*.md text eol=lf
+*.txt text eol=lf
 
 # Windows scripts
 *.bat text eol=crlf
@@ -21,4 +38,5 @@ Makefile text eol=lf
 *.jpg binary
 *.jpeg binary
 *.gif binary
+*.ico binary
 *.pdf binary
