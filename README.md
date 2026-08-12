@@ -340,12 +340,12 @@ Examples:
 **Phase 1 — Setup**
 
 - [x] Repo created, all members have access
-- [ ] Branch protection rules set on `main`
+- [x] Branch protection rules set on `main`
 - [x] `docker/Dockerfile` builds successfully
 - [x] Top-level `Makefile` targets defined: `all`, `audit`, `collector`, `cli`, `test`, `clean`
 - [x] `go.mod` initialized
-- [ ] `scripts/setup.sh` installs all deps on fresh Ubuntu 22.04
-- [ ] GitHub Actions CI skeleton runs on push
+- [x] `scripts/setup.sh` installs all deps on fresh Ubuntu 22.04
+- [x] GitHub Actions CI skeleton runs on push
 
 **Phase 2 — Audit Library**
 
