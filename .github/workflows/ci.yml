@@ -17,7 +17,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.26'
       - name: Cache Go modules
         uses: actions/cache@v4
         with:
@@ -28,15 +28,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
       - name: Build project
-        run: make
+        run: make audit
       - name: Run Go unit tests
         run: go test ./... -v
-      # - name: Run integration tests
-      #   run: |
-      #     sudo mkdir -p /var/ldwatch
-      #     sudo mkdir -p /run
-      #     sudo chown runner:runner /var/ldwatch
-      #     bash scripts/run_tests.sh
+      - name: Run integration tests
+        run: |
+          sudo mkdir -p /var/ldwatch
+          sudo mkdir -p /run
+          sudo chown runner:runner /var/ldwatch
+          bash scripts/run_tests.sh
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
