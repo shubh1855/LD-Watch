@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LD-Watch Interactive Architecture</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121a31;
+      --panel-2: #1a2547;
+      --text: #eef2ff;
+      --muted: #a8b3d4;
+      --good: #2ecc71;
+      --warn: #f39c12;
+      --bad: #e74c3c;
+      --line: #2a3b73;
+      --accent: #6ea8fe;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, Segoe UI, Arial, sans-serif;
+      color: var(--text);
+      background: linear-gradient(180deg, #060a16, var(--bg));
+    }
+    .wrap {
+      width: min(1200px, 96%);
+      margin: 24px auto 50px;
+    }
+    .hero, .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 14px;
+    }
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: 1.8rem;
+    }
+    .muted { color: var(--muted); }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .chip {
+      border: 1px solid var(--line);
+      background: #0f1630;
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 0.85rem;
+    }
+    .alert {
+      border-left: 4px solid var(--warn);
+      background: #3a2a11;
+      color: #ffe7c2;
+      padding: 10px 12px;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: var(--panel-2);
+    }
+    h2, h3 { margin: 0 0 10px; }
+    h2 { font-size: 1.25rem; }
+    h3 { font-size: 1.03rem; }
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .tab-btn {
+      border: 1px solid var(--line);
+      background: #101a38;
+      color: var(--muted);
+      border-radius: 8px;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+    .tab-btn.active {
+      color: #fff;
+      border-color: var(--accent);
+      background: #182a59;
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 8px;
+      vertical-align: top;
+    }
+    th { background: #0f1833; text-align: left; }
+    .status {
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      display: inline-block;
+      font-size: 0.8rem;
+    }
+    .done { background: #143322; color: #90f5b8; border: 1px solid #2b7d50; }
+    .pending { background: #3a2b12; color: #ffd79a; border: 1px solid #8e6a2f; }
+    .missing { background: #3a1414; color: #ffb0b0; border: 1px solid #9e3838; }
+    .progress {
+      height: 10px;
+      background: #0d1530;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      overflow: hidden;
+    }
+    .bar {
+      height: 100%;
+      background: linear-gradient(90deg, #3996ff, #55d6ff);
+      width: 0%;
+      transition: width .35s ease;
+    }
+    details {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: #101937;
+      margin-bottom: 8px;
+    }
+    summary { cursor: pointer; font-weight: 600; }
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    select, input {
+      background: #0e1630;
+      color: #e7ecff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 6px 8px;
+    }
+    .legend { font-size: 0.86rem; color: var(--muted); }
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.9rem;
+      white-space: pre-wrap;
+      background: #0c1430;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      overflow-x: auto;
+    }
+    .footer {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+    @media (max-width: 900px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>LD-Watch - Interactive Architecture and Decision Guide</h1>
+      <p class="muted">
+        Real-time dynamic linker telemetry and threat detection project. This page is optimized for explanation in review meetings and viva presentations.
+      </p>
+      <div class="chips">
+        <span class="chip">Domain: Linux Security</span>
+        <span class="chip">Core Interface: LD_AUDIT</span>
+        <span class="chip">Languages: C + Go</span>
+        <span class="chip">Storage: SQLite (planned)</span>
+      </div>
+      <div class="alert">
+        <strong>Reality check:</strong> README describes full pipeline, but current implementation is mainly the C audit hook prototype. Collector/engine/CLI are still mostly pending.
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Architecture View</h2>
+      <div class="tabs" id="arch-tabs">
+        <button class="tab-btn active" data-tab="target">Target Architecture</button>
+        <button class="tab-btn" data-tab="asbuilt">As-Built (Current Code)</button>
+      </div>
+
+      <div class="tab-panel active" id="tab-target">
+        <svg viewBox="0 0 1100 320" width="100%" role="img" aria-label="Target architecture diagram">
+          <defs>
+            <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L9,3 z" fill="#7fb3ff"></path>
+            </marker>
+          </defs>
+          <rect x="20" y="40" width="180" height="70" rx="10" fill="#1b2a52" stroke="#5f8de8"></rect>
+          <text x="110" y="68" text-anchor="middle" fill="#eaf2ff" font-size="14">Target Process</text>
+          <text x="110" y="90" text-anchor="middle" fill="#aac4ff" font-size="12">(ld.so runtime)</text>
+
+          <rect x="250" y="40" width="220" height="70" rx="10" fill="#1b2a52" stroke="#5f8de8"></rect>
+          <text x="360" y="68" text-anchor="middle" fill="#eaf2ff" font-size="14">audit.so (C hooks)</text>
+          <text x="360" y="90" text-anchor="middle" fill="#aac4ff" font-size="12">la_objopen / la_objsearch / la_symbind64</text>
+
+          <rect x="520" y="40" width="180" height="70" rx="10" fill="#1b2a52" stroke="#5f8de8"></rect>
+          <text x="610" y="68" text-anchor="middle" fill="#eaf2ff" font-size="14">Unix Socket IPC</text>
+          <text x="610" y="90" text-anchor="middle" fill="#aac4ff" font-size="12">binary event struct</text>
+
+          <rect x="750" y="40" width="170" height="70" rx="10" fill="#1b2a52" stroke="#5f8de8"></rect>
+          <text x="835" y="68" text-anchor="middle" fill="#eaf2ff" font-size="14">Collector (Go)</text>
+          <text x="835" y="90" text-anchor="middle" fill="#aac4ff" font-size="12">parse + persist</text>
+
+          <rect x="260" y="180" width="200" height="70" rx="10" fill="#1b2a52" stroke="#5f8de8"></rect>
+          <text x="360" y="208" text-anchor="middle" fill="#eaf2ff" font-size="14">Detection Engine</text>
+          <text x="360" y="230" text-anchor="middle" fill="#aac4ff" font-size="12">rules + baseline diff</text>
+
+          <rect x="520" y="180" width="180" height="70" rx="10" fill="#1b2a52" stroke="#5f8de8"></rect>
+          <text x="610" y="208" text-anchor="middle" fill="#eaf2ff" font-size="14">SQLite Store</text>
+          <text x="610" y="230" text-anchor="middle" fill="#aac4ff" font-size="12">events + alerts</text>
+
+          <rect x="760" y="180" width="160" height="70" rx="10" fill="#1b2a52" stroke="#5f8de8"></rect>
+          <text x="840" y="208" text-anchor="middle" fill="#eaf2ff" font-size="14">CLI (Go)</text>
+          <text x="840" y="230" text-anchor="middle" fill="#aac4ff" font-size="12">alerts / diff / report</text>
+
+          <line x1="200" y1="75" x2="250" y2="75" stroke="#7fb3ff" stroke-width="2" marker-end="url(#arrow)"></line>
+          <line x1="470" y1="75" x2="520" y2="75" stroke="#7fb3ff" stroke-width="2" marker-end="url(#arrow)"></line>
+          <line x1="700" y1="75" x2="750" y2="75" stroke="#7fb3ff" stroke-width="2" marker-end="url(#arrow)"></line>
+          <line x1="835" y1="110" x2="835" y2="180" stroke="#7fb3ff" stroke-width="2" marker-end="url(#arrow)"></line>
+          <line x1="750" y1="215" x2="700" y2="215" stroke="#7fb3ff" stroke-width="2" marker-end="url(#arrow)"></line>
+          <line x1="520" y1="215" x2="460" y2="215" stroke="#7fb3ff" stroke-width="2" marker-end="url(#arrow)"></line>
+        </svg>
+      </div>
+
+      <div class="tab-panel" id="tab-asbuilt">
+        <div class="mono">Current runtime flow:
+
+Program -> ld.so -> audit.so hooks -> stderr logging
+
+Not yet wired:
+- audit.so -> Unix socket sender (ipc.c TODO)
+- collector socket server and struct parser
+- detection rules execution engine
+- SQLite event + alert persistence
+- operational CLI commands
+        </div>
+      </div>
+      <p class="legend">Tip: switch tabs to explain "vision vs implementation reality" clearly.</p>
+    </section>
+
+    <section class="panel grid-2">
+      <div class="card">
+        <h3>Core Engineering Decisions</h3>
+        <table>
+          <thead>
+            <tr><th>Decision</th><th>Reason</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Use LD_AUDIT</td><td>Observes loader behavior exactly where linker attacks occur.</td></tr>
+            <tr><td>C for hooks</td><td>Required by glibc audit ABI and low-level runtime integration.</td></tr>
+            <tr><td>No printf in hot path</td><td>write() reduces re-entrancy/allocation side effects in audited process.</td></tr>
+            <tr><td>Cookie map for SO provenance</td><td>Needed to resolve symbol source/target in la_symbind64 events.</td></tr>
+            <tr><td>Go for backend tools</td><td>Cleaner concurrency and faster development for collector + CLI.</td></tr>
+            <tr><td>SQLite</td><td>Portable, demo-friendly, no external DB dependency.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h3>Detection Rules (Planned)</h3>
+        <table>
+          <thead>
+            <tr><th>Rule</th><th>Trigger</th><th>Severity</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>UNKNOWN_SO</td><td>Loaded SO not in baseline for executable</td><td>HIGH</td></tr>
+            <tr><td>PATH_HIJACK</td><td>Expected SO name but loaded from different path</td><td>CRITICAL</td></tr>
+            <tr><td>SYMBOL_INTERPOSITION</td><td>Critical symbol resolves to unexpected SO</td><td>CRITICAL</td></tr>
+            <tr><td>PRELOAD_PRIVILEGED</td><td>LD_PRELOAD attempt in sensitive context</td><td>CRITICAL</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Implementation Tracker</h2>
+      <div class="controls">
+        <label>Filter:
+          <select id="status-filter">
+            <option value="all">All</option>
+            <option value="done">Done</option>
+            <option value="pending">Pending</option>
+            <option value="missing">Missing</option>
+          </select>
+        </label>
+      </div>
+      <table id="tracker-table">
+        <thead>
+          <tr>
+            <th>Module</th>
+            <th>Expected</th>
+            <th>Current</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr data-status="done">
+            <td>audit/src/audit.c</td>
+            <td>la_version + safe output helpers</td>
+            <td>Implemented</td>
+            <td><span class="status done">Done</span></td>
+          </tr>
+          <tr data-status="done">
+            <td>audit/src/hooks.c</td>
+            <td>objopen/objsearch/symbind hooks</td>
+            <td>Implemented with critical symbol filter</td>
+            <td><span class="status done">Done</span></td>
+          </tr>
+          <tr data-status="pending">
+            <td>audit/src/ipc.c</td>
+            <td>Socket event sender</td>
+            <td>TODO stub</td>
+            <td><span class="status pending">Pending</span></td>
+          </tr>
+          <tr data-status="missing">
+            <td>cmd/collector/main.go</td>
+            <td>Socket listener + SQLite writer</td>
+            <td>Placeholder print only</td>
+            <td><span class="status missing">Missing</span></td>
+          </tr>
+          <tr data-status="missing">
+            <td>cmd/ldwatch-cli/main.go</td>
+            <td>alerts/watch/diff/report commands</td>
+            <td>Placeholder print only</td>
+            <td><span class="status missing">Missing</span></td>
+          </tr>
+          <tr data-status="missing">
+            <td>engine/*</td>
+            <td>Rule execution + baseline compare</td>
+            <td>Not present in current tree</td>
+            <td><span class="status missing">Missing</span></td>
+          </tr>
+          <tr data-status="pending">
+            <td>tests/integration/*</td>
+            <td>End-to-end attack simulations</td>
+            <td>Mentioned in README, not present as code</td>
+            <td><span class="status pending">Pending</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="margin-top:12px;">
+        <div class="muted" style="margin-bottom:6px;">Overall completion estimate</div>
+        <div class="progress"><div class="bar" id="completion-bar"></div></div>
+        <div class="footer" id="completion-text"></div>
+      </div>
+    </section>
+
+    <section class="panel grid-3">
+      <div class="card">
+        <h3>Already Done</h3>
+        <ul>
+          <li>Audit library build pipeline and Makefile integration</li>
+          <li>LD_AUDIT hooks for SO load/search/symbol bind</li>
+          <li>Critical-symbol-focused logging strategy</li>
+          <li>CI workflow scaffold and Linux dependencies install</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Must Do Next</h3>
+        <ul>
+          <li>Define and finalize binary IPC event struct</li>
+          <li>Implement collector receiver and parser</li>
+          <li>Persist events and build first alert rule</li>
+          <li>Connect one CLI command end-to-end</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Caveats</h3>
+        <ul>
+          <li>Static binaries are outside LD_AUDIT coverage.</li>
+          <li>setuid execution can sanitize LD_* environment behavior.</li>
+          <li>Current visibility is log-based, not persisted telemetry.</li>
+          <li>MAX_OBJECTS is fixed and needs overflow strategy.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Interactive Walkthrough for Presentation</h2>
+      <details open>
+        <summary>Step 1 - Explain the threat model</summary>
+        <p class="muted">Traditional monitors miss the dynamic linker stage. LD-Watch instruments the loader path itself, where runtime hijacking starts.</p>
+      </details>
+      <details>
+        <summary>Step 2 - Show target architecture diagram</summary>
+        <p class="muted">Use the "Target Architecture" tab and explain each boundary: hook capture, IPC, collection, rules, storage, CLI.</p>
+      </details>
+      <details>
+        <summary>Step 3 - Show reality gap transparently</summary>
+        <p class="muted">Switch to "As-Built" tab and implementation tracker to show honest status and maturity plan.</p>
+      </details>
+      <details>
+        <summary>Step 4 - Explain detection outcomes</summary>
+        <p class="muted">Describe UNKNOWN_SO, PATH_HIJACK, and SYMBOL_INTERPOSITION as concrete attacker behaviors mapped to alerts.</p>
+      </details>
+      <details>
+        <summary>Step 5 - Conclude with phased roadmap</summary>
+        <p class="muted">Show pending milestones as incremental, testable slices: IPC -> persistence -> rule -> CLI -> scenarios.</p>
+      </details>
+    </section>
+
+    <section class="panel">
+      <h2>Roadmap Timeline</h2>
+      <div class="mono">Phase 1  [Done]    Repo setup, CI, Makefiles, baseline scaffolding
+Phase 2  [Done]    C hook prototype with runtime telemetry logs
+Phase 3  [Next]    IPC sender + collector socket parser + SQLite writes
+Phase 4  [Next]    Detection rules + baseline learner + alert model
+Phase 5  [Next]    Real CLI (alerts, watch, diff, report)
+Phase 6  [Next]    Integration and attack scenario validation
+Phase 7  [Next]    Demo hardening, docs alignment, release packaging</div>
+    </section>
+
+    <p class="footer">File: architecture.html | Generated from README + current code tree (audit implemented, backend pipeline pending).</p>
+  </div>
+
+  <script>
+    (function () {
+      const tabButtons = document.querySelectorAll(".tab-btn");
+      const tabPanels = {
+        target: document.getElementById("tab-target"),
+        asbuilt: document.getElementById("tab-asbuilt")
+      };
+      tabButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+          tabButtons.forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          Object.values(tabPanels).forEach(p => p.classList.remove("active"));
+          tabPanels[btn.dataset.tab].classList.add("active");
+        });
+      });
+
+      const filter = document.getElementById("status-filter");
+      const rows = Array.from(document.querySelectorAll("#tracker-table tbody tr"));
+      function applyFilter() {
+        const v = filter.value;
+        rows.forEach(row => {
+          row.style.display = (v === "all" || row.dataset.status === v) ? "" : "none";
+        });
+      }
+      filter.addEventListener("change", applyFilter);
+      applyFilter();
+
+      const doneCount = rows.filter(r => r.dataset.status === "done").length;
+      const percent = Math.round((doneCount / rows.length) * 100);
+      const bar = document.getElementById("completion-bar");
+      const txt = document.getElementById("completion-text");
+      bar.style.width = percent + "%";
+      txt.textContent = doneCount + " of " + rows.length + " major blocks complete (" + percent + "%).";
+    })();
+  </script>
+</body>
+</html>

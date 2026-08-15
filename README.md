@@ -353,7 +353,7 @@ Examples:
 - [x] `la_objopen()` fires and logs SO path + PID
 - [x] `la_objsearch()` captures `LA_SER_LIBPATH` flag (LD_LIBRARY_PATH used)
 - [x] `la_symbind64()` captures symbol name + resolved address
-- [ ] IPC sender writes `ldwatch_event_t` to Unix socket
+- [x] IPC sender writes `ldwatch_event_t` to Unix socket
 - [x] Smoke test: `LD_AUDIT=./audit/audit.so ls` prints expected SOs
 
 **Phase 3 — Collector Daemon**
