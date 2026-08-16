@@ -1,3 +1,4 @@
+#include <stddef.h>
 #define _GNU_SOURCE
 #include "../include/audit.h"
 #include <elf.h>
@@ -6,8 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 
-/* ── Cookie → SO name map ───────────────────────────────────────────────────
- */
+/* Cookie → SO name map */
 /*
  * la_objopen gives us a cookie (unique pointer) per loaded SO.
  * la_symbind64 gives us that same cookie to tell us which SO a symbol
@@ -16,14 +16,16 @@
 ldw_obj_entry_t ldw_obj_map[MAX_OBJECTS];
 int ldw_obj_count = 0;
 
-/* ── Helper: safe strncpy without libc dependency ────────────────────────── */
-static void ldw_copy_str(char *dst, const char *src, int max) {
-  int i = 0;
-  while (src && src[i] && i < max - 1) {
-    dst[i] = src[i];
-    i++;
-  }
-  dst[i] = '\0';
+/* Helper: safe strncpy without libc dependency */
+static void ldw_copy_str(char *dst, const char *src, int max)
+{
+    int i = 0;
+    while (src && src[i] && i < max - 1)
+    {
+        dst[i] = src[i];
+        i++;
+    }
+    dst[i] = '\0';
 }
 
 /*
@@ -38,29 +40,47 @@ static void ldw_copy_str(char *dst, const char *src, int max) {
  *   LA_FLG_BINDTO   — notify when a symbol resolves INTO this SO
  * We return both so we catch everything.
  */
-unsigned int la_objopen(struct link_map *map, Lmid_t lmid, uintptr_t *cookie) {
-  (void)lmid;
 
-  /* Store cookie → name mapping for la_symbind64 to use later */
-  if (ldw_obj_count < MAX_OBJECTS) {
-    ldw_obj_map[ldw_obj_count].cookie = cookie;
-    ldw_copy_str(ldw_obj_map[ldw_obj_count].name, map->l_name, 256);
-    ldw_obj_count++;
-  }
+static void ldw_zero_event(ldwatch_event_t *ev)
+{
+    char *p = (char *)ev;
+    for (size_t i = 0; i < sizeof(ldwatch_event_t); i++)
+        p[i] = 0;
+}
 
-  /* Print the event */
-  ldw_write_str(LDW_TAG "LOAD   pid=");
-  ldw_write_pid();
-  ldw_write_str(" so=");
-  ldw_write_str(map->l_name[0] ? map->l_name : "<main>");
-  ldw_write_str("\n");
+unsigned int la_objopen(struct link_map *map, Lmid_t lmid, uintptr_t *cookie)
+{
+    (void)lmid;
 
-  return LA_FLG_BINDFROM | LA_FLG_BINDTO;
+    /* Store cookie: name mapping for la_symbind64 to use later */
+    if (ldw_obj_count < MAX_OBJECTS)
+    {
+        ldw_obj_map[ldw_obj_count].cookie = cookie;
+        ldw_copy_str(ldw_obj_map[ldw_obj_count].name, map->l_name, 256);
+        ldw_obj_count++;
+    }
+
+    /* Print the event */
+    ldw_write_str(LDW_TAG "LOAD   pid=");
+    ldw_write_pid();
+    ldw_write_str(" so=");
+    ldw_write_str(map->l_name[0] ? map->l_name : "<main>");
+    ldw_write_str("\n");
+
+    ldwatch_event_t ev;
+    ldw_zero_event(&ev);
+    ev.pid = (uint32_t)getpid();
+    ev.event_type = LDW_EVENT_SO_LOAD;
+    ev.mechanism = LDW_MECH_STANDARD;
+    ldw_copy_str(ev.so_path, map->l_name, 256);
+    ldw_ipc_send(&ev);
+
+    return LA_FLG_BINDFROM | LA_FLG_BINDTO;
 }
 
 /*
- * la_objsearch — called when ld.so searches for a shared object by name.
- * This is where we detect HOW an SO was found — standard path, LD_LIBRARY_PATH,
+ * la_objsearch called when ld.so searches for a shared object by name.
+ * This is where we detect HOW an SO was found standard path, LD_LIBRARY_PATH,
  * RPATH, etc. The `flag` parameter tells us the resolution mechanism.
  *
  * Key flags:
@@ -74,38 +94,53 @@ unsigned int la_objopen(struct link_map *map, Lmid_t lmid, uintptr_t *cookie) {
  * Return the name unchanged to allow loading to proceed.
  * Return NULL to abort loading (we don't do this — we only observe).
  */
-char *la_objsearch(const char *name, uintptr_t *cookie, unsigned int flag) {
-  (void)cookie;
 
-  const char *mechanism = "standard";
-  int suspicious = 0;
+char *la_objsearch(const char *name, uintptr_t *cookie, unsigned int flag)
+{
+    (void)cookie;
 
-  if (flag & LA_SER_LIBPATH) {
-    mechanism = "LD_LIBRARY_PATH";
-    suspicious = 1;
-  } else if (flag & LA_SER_RUNPATH) {
-    mechanism = "RPATH/RUNPATH";
-  } else if (flag & LA_SER_CONFIG) {
-    mechanism = "ldconfig";
-  } else if (flag & LA_SER_DEFAULT) {
-    mechanism = "default";
-  } else if (flag & LA_SER_ORIG) {
-    mechanism = "original";
-  }
+    const char *mechanism = "standard";
+    uint8_t mech_code = LDW_MECH_STANDARD;
 
-  ldw_write_str(LDW_TAG "SEARCH pid=");
-  ldw_write_pid();
-  ldw_write_str(" name=");
-  ldw_write_str(name);
-  ldw_write_str(" mechanism=");
-  ldw_write_str(mechanism);
-  if (suspicious) {
-    ldw_write_str(" [!] LD_LIBRARY_PATH in use");
-  }
-  ldw_write_str("\n");
+    if (flag & LA_SER_LIBPATH)
+    {
+        mechanism = "LD_LIBRARY_PATH";
+        mech_code = LDW_MECH_LD_LIBPATH;
+    } else if (flag & LA_SER_RUNPATH)
+    {
+        mechanism = "RPATH/RUNPATH";
+        mech_code = LDW_MECH_RPATH;
+    } else if (flag & LA_SER_CONFIG)
+    {
+        mechanism = "ldconfig";
+    } else if (flag & LA_SER_DEFAULT)
+    {
+        mechanism = "default";
+    } else if (flag & LA_SER_ORIG)
+    {
+        mechanism = "original";
+    }
 
-  /* Always return name — we are observing, not blocking */
-  return (char *)name;
+    ldw_write_str(LDW_TAG "SEARCH pid=");
+    ldw_write_pid();
+    ldw_write_str(" name=");
+    ldw_write_str(name);
+    ldw_write_str(" mechanism=");
+    ldw_write_str(mechanism);
+    if (mech_code == LDW_MECH_LD_LIBPATH)
+        ldw_write_str("[!] LD_LIBRARY_PATH in use");
+    ldw_write_str("\n");
+
+    ldwatch_event_t ev;
+    ldw_zero_event(&ev);
+    ev.pid = (uint32_t)getpid();
+    ev.event_type = LDW_EVENT_SO_SEARCH;
+    ev.mechanism = mech_code;
+    ldw_copy_str(ev.so_path, name, 256);
+    ldw_ipc_send(&ev);
+
+    /* return name for observing */
+    return (char *)name;
 }
 
 /*
@@ -125,29 +160,41 @@ char *la_objsearch(const char *name, uintptr_t *cookie, unsigned int flag) {
  */
 uintptr_t la_symbind64(Elf64_Sym *sym, unsigned int ndx, uintptr_t *refcook,
                        uintptr_t *defcook, unsigned int *flags,
-                       const char *symname) {
-  (void)ndx;
-  (void)flags;
+                       const char *symname)
+{
+    (void)ndx;
+    (void)flags;
 
-  /* Only track symbols we care about */
-  if (!ldw_is_critical(symname)) {
+    /* only track symbols we care about */
+    if (!ldw_is_critical(symname))
+    {
+        return sym->st_value;
+    }
+
+    const char *from_so = ldw_cookie_to_name(refcook);
+    const char *into_so = ldw_cookie_to_name(defcook);
+
+    ldw_write_str(LDW_TAG "SYMBOL pid=");
+    ldw_write_pid();
+    ldw_write_str(" sym=");
+    ldw_write_str(symname);
+    ldw_write_str(" addr=");
+    ldw_write_hex((uint64_t)sym->st_value);
+    ldw_write_str(" resolved_into=");
+    ldw_write_str(into_so);
+    ldw_write_str(" requested_by=");
+    ldw_write_str(from_so);
+    ldw_write_str("\n");
+
+    ldwatch_event_t ev;
+    ldw_zero_event(&ev);
+    ev.pid = (uint32_t)gettid();
+    ev.event_type = LDW_EVENT_SYM_BIND;
+    ev.mechanism = LDW_MECH_STANDARD;
+    ev.resolved_addr = (uint64_t)sym->st_value;
+    ldw_copy_str(ev.so_path, into_so, 256);
+    ldw_copy_str(ev.symbol, symname, 128);
+    ldw_ipc_send(&ev);
+
     return sym->st_value;
-  }
-
-  const char *from_so = ldw_cookie_to_name(refcook);
-  const char *into_so = ldw_cookie_to_name(defcook);
-
-  ldw_write_str(LDW_TAG "SYMBOL pid=");
-  ldw_write_pid();
-  ldw_write_str(" sym=");
-  ldw_write_str(symname);
-  ldw_write_str(" addr=");
-  ldw_write_hex((uint64_t)sym->st_value);
-  ldw_write_str(" resolved_into=");
-  ldw_write_str(into_so);
-  ldw_write_str(" requested_by=");
-  ldw_write_str(from_so);
-  ldw_write_str("\n");
-
-  return sym->st_value;
 }
