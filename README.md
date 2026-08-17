@@ -358,8 +358,8 @@ Examples:
 
 **Phase 3 — Collector Daemon**
 
-- [ ] Listens on `/run/ldwatch.sock`
-- [ ] Reads `ldwatch_event_t` structs correctly (field alignment verified)
+- [x] Listens on `/run/ldwatch.sock`
+- [x] Reads `ldwatch_event_t` structs correctly (field alignment verified)
 - [ ] Writes `so_events` to SQLite
 - [ ] Writes `symbol_events` to SQLite
 - [ ] Passes events to detection engine
