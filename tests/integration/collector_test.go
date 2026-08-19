@@ -128,23 +128,34 @@ func makeSymbolEvent(pid uint32, soPath, sym string, addr, ts uint64) *proto.Eve
 
 func waitForSOEventCount(t *testing.T, q *store.Queries, pids []int64, want int) {
 	t.Helper()
+	waitForEventCounts(t, q, pids, want, 0)
+}
+
+func waitForEventCounts(t *testing.T, q *store.Queries, pids []int64, wantSO, wantSymbol int) {
+	t.Helper()
 	ctx := context.Background()
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
-		total := 0
+		soTotal := 0
+		symbolTotal := 0
 		for _, pid := range pids {
-			rows, err := q.ListSOEventsForPID(ctx, pid)
+			soRows, err := q.ListSOEventsForPID(ctx, pid)
 			if err != nil {
 				t.Fatalf("ListSOEventsForPID pid=%d: %v", pid, err)
 			}
-			total += len(rows)
+			symbolRows, err := q.ListSymbolEventsForPID(ctx, pid)
+			if err != nil {
+				t.Fatalf("ListSymbolEventsForPID pid=%d: %v", pid, err)
+			}
+			soTotal += len(soRows)
+			symbolTotal += len(symbolRows)
 		}
-		if total == want {
+		if soTotal == wantSO && symbolTotal == wantSymbol {
 			return
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	t.Fatalf("timeout waiting for %d so_events", want)
+	t.Fatalf("timeout waiting for %d so_events and %d symbol_events", wantSO, wantSymbol)
 }
 
 // ---- tests ------------------------------------------------------------------
@@ -161,25 +172,16 @@ func TestCollectorReceivesSOLoadEvent(t *testing.T) {
 
 	ev := makeSOEvent(1111, "/lib/x86_64-linux-gnu/libc.so.6", 1_000_000)
 
-	// Send event in its own goroutine; closing the connection after write
-	// lets handleConn finish and Stop() proceed without blocking.
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		sendEvents(t, sockPath, ev)
-	}()
-
-	// Drain a single event from the buffered channel.
-	<-done
-	ln.Stop() // waits for handleConn to enqueue everything, then closes channel.
+	go sendEvents(t, sockPath, ev)
 
 	var got *proto.Event
-	for ev := range ln.Events {
-		got = ev
+	select {
+	case got = <-ln.Events:
+	case <-time.After(2 * time.Second):
+		ln.Stop()
+		t.Fatal("timeout waiting for event")
 	}
-	if got == nil {
-		t.Fatal("no event received")
-	}
+	ln.Stop()
 	if got.PID != 1111 {
 		t.Errorf("PID: got %d, want 1111", got.PID)
 	}
@@ -203,6 +205,10 @@ func TestCollectorWritesToSQLite(t *testing.T) {
 		makeSOEvent(2222, "/usr/lib/libssl.so.3", 100),
 		makeSymbolEvent(2222, "/usr/lib/libssl.so.3", "SSL_read", 0xdeadbeef, 200),
 	)
+
+	// Wait for persistence before stopping the listener; otherwise Stop can close
+	// the accept loop before it drains the kernel's pending connection queue.
+	waitForEventCounts(t, p.Queries, []int64{2222}, 1, 1)
 
 	p.drain(t)
 	defer p.close(t)
