@@ -11,11 +11,14 @@ import (
 var ddl string
 
 // Open opens (or creates) the SQLite database at path and verifies connectivity.
+// MaxOpenConns is capped at 1: SQLite serialises writes, and :memory: databases
+// are per-connection (a second connection would see a different, empty DB).
 func Open(path string) (*sql.DB, error) {
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		return nil, err
 	}
+	db.SetMaxOpenConns(1)
 	if err := db.Ping(); err != nil {
 		return nil, err
 	}
