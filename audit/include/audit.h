@@ -7,7 +7,7 @@
 #include <stdint.h>
 
 /* Socket path */
-#define LDW_SOCK_PATH "/run/ldwatch.sock"
+#define LDW_SOCK_PATH "/run/ldwatch/ldwatch.sock"
 
 /* Output prefix */
 #define LDW_TAG "[ldwatch] "
