@@ -31,6 +31,10 @@ func New(path string) (*Listener, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := os.Chmod(path, 0o666); err != nil {
+		_ = ln.Close()
+		return nil, err
+	}
 
 	return &Listener{
 		Events:   make(chan *proto.Event, 512),

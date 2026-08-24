@@ -10,7 +10,7 @@
  * ipc.c — Unix socket sender
  *
  * Sends ldwatch_event_t structs to the collector daemon over
- * /run/ldwatch.sock using write() directly.
+ * /run/ldwatch/ldwatch.sock using write() directly.
  *
  * Design constraints (run inside every audited process):
  *   - No malloc

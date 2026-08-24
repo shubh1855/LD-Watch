@@ -115,7 +115,7 @@ it immediately. LD-Watch is that inspector.
 │                  ├── la_objsearch()   SO search path         │
 │                  └── la_symbind64()   symbol resolved        │
 └──────────────────────────┬───────────────────────────────────┘
-                           │ Unix socket (/run/ldwatch.sock)
+                           │ Unix socket (/run/ldwatch/ldwatch.sock)
                            │ binary struct per event
                            ▼
              ┌─────────────────────────┐
@@ -358,7 +358,7 @@ Examples:
 
 **Phase 3 — Collector Daemon**
 
-- [x] Listens on `/run/ldwatch.sock`
+- [x] Listens on `/run/ldwatch/ldwatch.sock`
 - [x] Reads `ldwatch_event_t` structs correctly (field alignment verified)
 - [ ] Writes `so_events` to SQLite
 - [ ] Writes `symbol_events` to SQLite
@@ -465,7 +465,7 @@ make test
 ### Step 1 — Start the collector daemon
 
 ```bash
-sudo ./bin/collector --db /var/ldwatch/events.db --socket /run/ldwatch.sock
+sudo ./bin/collector --db /var/ldwatch/events.db --socket /run/ldwatch/ldwatch.sock
 ```
 
 ### Step 2 — Run a program under LD-Watch
