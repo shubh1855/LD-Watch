@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sync"
 	"syscall"
 
@@ -16,12 +17,19 @@ import (
 
 var (
 	dbPath   = flag.String("db", "/var/ldwatch/events.db", "SQLite DB path")
-	sockPath = flag.String("socket", "/run/ldwatch.sock", "Unix socket path")
+	sockPath = flag.String("socket", "/run/ldwatch/ldwatch.sock", "Unix socket path")
 	workers  = flag.Int("workers", 4, "Event processor goroutines")
 )
 
 func main() {
 	flag.Parse()
+
+	if err := ensureParentDir(*dbPath); err != nil {
+		log.Fatalf("[collector] create db dir: %v", err)
+	}
+	if err := ensureParentDir(*sockPath); err != nil {
+		log.Fatalf("[collector] create socket dir: %v", err)
+	}
 
 	db, err := store.Open(*dbPath)
 	if err != nil {
@@ -65,4 +73,8 @@ func main() {
 
 	wg.Wait()
 	log.Println("[collector] all workers done, exiting")
+}
+
+func ensureParentDir(path string) error {
+	return os.MkdirAll(filepath.Dir(path), 0o755)
 }
