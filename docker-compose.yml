@@ -11,14 +11,12 @@ services:
     container_name: ldwatch-dev
     working_dir: /ld-watch
     volumes:
-      - .:/ld-watch
-    security_opt:
-      - seccomp:unconfined
-    cap_add:
-      - SYS_PTRACE
+      - .:/src:ro
+    tmpfs:
+      - /ld-watch
     stdin_open: true
     tty: true
-    command: /bin/bash
+    command: ["/bin/bash", "-lc", "cp -a /src/. /ld-watch/ && exec /bin/bash"]
   # ────────────────────────────────────────────────────────────────────────────
   # Attack scenario testing
   # Run: docker compose run --rm attack-test
@@ -27,14 +25,12 @@ services:
     image: ldwatch:dev
     working_dir: /ld-watch
     volumes:
-      - .:/ld-watch
-    security_opt:
-      - seccomp:unconfined
-    cap_add:
-      - SYS_PTRACE
+      - .:/src:ro
+    tmpfs:
+      - /ld-watch
     stdin_open: true
     tty: true
-    command: bash scripts/run_tests.sh
+    command: ["/bin/bash", "-lc", "cp -a /src/. /ld-watch/ && exec bash scripts/run_tests.sh"]
   # ────────────────────────────────────────────────────────────────────────────
   # CI simulation
   # Run: docker compose run --rm ci
@@ -43,9 +39,7 @@ services:
     image: ldwatch:dev
     working_dir: /ld-watch
     volumes:
-      - .:/ld-watch
-    security_opt:
-      - seccomp:unconfined
-    cap_add:
-      - SYS_PTRACE
-    command: bash -c "make && go test ./... -v"
+      - .:/src:ro
+    tmpfs:
+      - /ld-watch
+    command: ["/bin/bash", "-lc", "cp -a /src/. /ld-watch/ && exec bash -c 'make && go test ./... -v'"]

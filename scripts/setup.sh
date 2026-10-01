@@ -47,7 +47,7 @@ sudo apt-get install -y \
 log "System packages installed."
 
 # ─── Go ───────────────────────────────────────────────────────────────────────
-GO_VERSION="1.26.0"
+GO_VERSION="1.26.1"
 GO_INSTALL_DIR="/usr/local"
 GO_TARBALL="go${GO_VERSION}.linux-amd64.tar.gz"
 
@@ -67,10 +67,21 @@ else
 fi
 
 if [ "$INSTALL_GO" = true ]; then
-  curl -LO "https://go.dev/dl/${GO_TARBALL}"
+  curl -fLO "https://go.dev/dl/${GO_TARBALL}"
+  curl -fsSLO "https://go.dev/dl/${GO_TARBALL}.sha256"
+  echo "$(cat "${GO_TARBALL}.sha256")  ${GO_TARBALL}" | sha256sum -c -
+
+  GO_STAGING_DIR="$(mktemp -d)"
+  if ! tar -C "$GO_STAGING_DIR" -xzf "$GO_TARBALL" || \
+    [ ! -x "$GO_STAGING_DIR/go/bin/go" ]; then
+    rm -rf -- "$GO_STAGING_DIR" "$GO_TARBALL" "${GO_TARBALL}.sha256"
+    fail "Downloaded Go archive could not be staged. Existing Go installation was left unchanged."
+  fi
+
   sudo rm -rf "${GO_INSTALL_DIR}/go"
-  sudo tar -C "$GO_INSTALL_DIR" -xzf "$GO_TARBALL"
-  rm "$GO_TARBALL"
+  sudo mv "$GO_STAGING_DIR/go" "${GO_INSTALL_DIR}/go"
+  rm -rf -- "$GO_STAGING_DIR"
+  rm "$GO_TARBALL" "${GO_TARBALL}.sha256"
 
   SHELL_RC="$HOME/.bashrc"
   if [ -n "$ZSH_VERSION" ]; then

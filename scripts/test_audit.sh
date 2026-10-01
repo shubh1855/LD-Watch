@@ -3,7 +3,7 @@
 # Tests that each hook fires correctly before wiring up the collector.
 # Run from the repo root: bash scripts/test_audit.sh
 
-set -e
+set -euo pipefail
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -13,6 +13,8 @@ NC='\033[0m'
 PASS=0
 FAIL=0
 AUDIT_LIB="./audit/audit.so"
+TEST_DIR="$(mktemp -d "${TMPDIR:-/tmp}/ldwatch-audit.XXXXXX")"
+trap 'rm -rf -- "$TEST_DIR"' EXIT
 
 pass() {
   echo -e "${GREEN}[PASS]${NC} $1"
@@ -36,7 +38,7 @@ echo ""
 
 # ── Build probe binary for symbind tests ──────────────────────────────────────
 PROBE_SRC="tests/fixtures/probe.c"
-PROBE_BIN="tests/fixtures/probe"
+PROBE_BIN="$TEST_DIR/probe"
 
 info "Compiling probe binary for symbol tests..."
 if gcc -o "$PROBE_BIN" "$PROBE_SRC"; then
@@ -44,6 +46,22 @@ if gcc -o "$PROBE_BIN" "$PROBE_SRC"; then
 else
   fail "Could not compile probe binary — skipping symbol tests"
   PROBE_BIN=""
+fi
+echo ""
+
+# ── Test 0: Full-range formatter output ───────────────────────────────────────
+info "Test 0 — audit formatters support full uint64 values"
+FORMATTER_BIN="$TEST_DIR/formatters"
+if gcc -Wall -Wextra -I./audit/include \
+  -o "$FORMATTER_BIN" tests/fixtures/formatters.c audit/src/audit.c; then
+  FORMATTER_OUTPUT=$("$FORMATTER_BIN" 2>&1)
+  if [ "$FORMATTER_OUTPUT" = $'18446744073709551615\n0xffffffffffffffff' ]; then
+    pass "uint64 decimal and hexadecimal output is complete"
+  else
+    fail "formatter output was incomplete: $FORMATTER_OUTPUT"
+  fi
+else
+  fail "Could not compile formatter test"
 fi
 echo ""
 
@@ -85,14 +103,14 @@ fi
 
 # ── Test 5: LD_LIBRARY_PATH hijack is flagged ─────────────────────────────────
 info "Test 5 — la_objsearch: LD_LIBRARY_PATH usage flagged"
-mkdir -p /tmp/ldwatch_test_libs
-OUTPUT=$(LD_LIBRARY_PATH=/tmp/ldwatch_test_libs LD_AUDIT=$AUDIT_LIB ls /tmp 2>&1 >/dev/null)
+TEST_LIBRARY_DIR="$TEST_DIR/libs"
+mkdir -p "$TEST_LIBRARY_DIR"
+OUTPUT=$(LD_LIBRARY_PATH="$TEST_LIBRARY_DIR" LD_AUDIT=$AUDIT_LIB ls /tmp 2>&1 >/dev/null)
 if echo "$OUTPUT" | grep "SEARCH" | grep -q "LD_LIBRARY_PATH"; then
   pass "LD_LIBRARY_PATH usage detected in search events"
 else
   fail "LD_LIBRARY_PATH not flagged in search events"
 fi
-rm -rf /tmp/ldwatch_test_libs
 
 # ── Test 6: la_symbind64 fires on 'open' ──────────────────────────────────────
 info "Test 6 — la_symbind64: critical symbol 'open' is tracked"

@@ -46,8 +46,9 @@ void ldw_write_str(const char *s)
 
 void ldw_write_int(uint64_t n)
 {
-    char buf[20];
-    int i = 19;
+    /* 20 decimal digits for UINT64_MAX, plus the terminating NUL. */
+    char buf[21];
+    int i = 20;
     buf[i] = '\0';
     if (n == 0)
     {
@@ -66,8 +67,9 @@ void ldw_write_int(uint64_t n)
 void ldw_write_hex(uint64_t n)
 {
     static const char hex[] = "0123456789abcdef";
-    char buf[18];
-    int i = 17;
+    /* "0x", 16 hexadecimal digits, and the terminating NUL. */
+    char buf[19];
+    int i = 18;
     buf[i] = '\0';
     if (n == 0)
     {
