@@ -105,6 +105,7 @@ has no affirmative preload signal and therefore must emit `UNKNOWN`, not
 | 3 | `SYMBOL_TRUNCATED` | `symbol` filled its field |
 | 4 | `EXE_UNRESOLVED` | executable identity was unavailable |
 | 5 | `PROCESS_START_UNRESOLVED` | start ticks were unavailable |
+| 6 | `OBJECT_UNRESOLVED` | object attribution was unavailable or capacity was exhausted |
 
 Unknown bits and non-zero reserved bytes are invalid in v1.
 

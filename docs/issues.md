@@ -42,6 +42,16 @@ Read [fix plans](fixes.md) for remediation and [ordered pending tasks](pending-t
 | I24 | Delivery | README tree, wire struct, completion checklist, baseline claims and commands differ from implementation. Rule names, severity casing and alert representations are inconsistent. | Users and assessors can infer functionality or guarantees that are not implemented. |
 | I25 | P2 | Docker test services mount the repository writable and relax seccomp/add ptrace capability without a documented per-test need. | The demonstration environment has more host-file access and capability than routine fixtures need. |
 
+## T03 dispositions (2026-10-01)
+
+- **I02 — fixed in audit-source scope.** The sender now uses explicit v1 `SOCK_SEQPACKET` records, `MSG_NOSIGNAL`, nonblocking bounded sends, close-on-exec, one-second reconnect backoff, fork detection, and drop/reconnect counters. Collector-side handling remains T04.
+- **I05 — partially fixed.** Audit records now carry PID consistently, separate TID, process start ticks, namespace, and object lifecycle cleanup. Collector executable/process-instance enrichment remains T05.
+- **I11 — fixed in audit-source scope.** Loads default to `UNKNOWN`; origin values are emitted only from loader flags, and no unsupported preload certainty is invented.
+- **I12 — fixed.** Object entries are removed on `la_objclose`; capacity exhaustion is counted and marked degraded.
+- **I13 — fixed.** Formatter buffers cover full uint64 decimal and hexadecimal ranges with regression coverage.
+- **I15 — fixed in sender scope.** `LDWATCH_SOCKET` supports an absolute endpoint override; collector policy remains T04.
+- **I17 — partially fixed.** The source now emits versioned, explicit little-endian records with lengths and truncation/degraded flags. Go decoding and incompatible-record rejection remain T04.
+
 ## Scope limitations, not automatically bugs
 
 - LD-Watch uses `LD_AUDIT` to observe selected dynamically linked programs. It does not currently monitor every program system-wide.

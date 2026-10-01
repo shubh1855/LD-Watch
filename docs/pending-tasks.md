@@ -49,15 +49,15 @@ Owner: tooling + audit. Plans: F03, F09. Issues: I09, I13, I23, I25.
 
 Owner: audit. Plans: F02, F03. Issues: I02, I05, I11, I12, I15, I17.
 
-- [ ] Implement the T01 wire format and endpoint configuration.
-- [ ] Implement bounded transport, local SIGPIPE handling, close-on-exec and reconnect/loss behavior.
-- [ ] Implement fork/concurrent-callback record integrity according to the contract.
-- [ ] Separate PID/TID and emit lifecycle/identity metadata.
-- [ ] Add unload cleanup, capacity reporting and truncation handling.
-- [ ] Report origin honestly and make verbose stderr output optional.
-- [ ] Validate benign C fixtures for transport and lifecycle behavior against a controlled receiver.
+- [x] Implement the T01 wire format and endpoint configuration.
+- [x] Implement bounded transport, local SIGPIPE handling, close-on-exec and reconnect/loss behavior.
+- [x] Implement fork/concurrent-callback record integrity according to the contract.
+- [x] Separate PID/TID and emit lifecycle/identity metadata.
+- [x] Add unload cleanup, capacity reporting and truncation handling.
+- [x] Report origin honestly and make verbose stderr output optional.
+- [x] Validate benign C fixtures for transport and lifecycle behavior against a controlled receiver.
 
-**Gate:** Source records match the contract; application behavior remains acceptable during receiver failures. The full collector is not yet required for this gate.
+**Gate:** Passed 2026-10-01. The C source emits explicit v1 1,024-byte little-endian records over bounded `SOCK_SEQPACKET`, supports endpoint override/fork reconnect, cleans object state, reports degraded attribution, and passes the controlled receiver suite. Collector decoding remains T04.
 
 ## T04 — Stabilize collector ingress and shutdown
 
@@ -193,6 +193,19 @@ Environment and toolchain: Linux local checkout; Go 1.26.1 module target
 Validation performed and result: audit hook suite passed 11/11; full Go suite (including integration) passed; make all passed; docker compose config passed.
 Affected issue IDs and disposition: I09, I13 fixed; I23 and I25 partially addressed by aligned toolchain/safe Compose defaults and remain open for T10 delivery/CI evidence.
 Remaining limitations: Dedicated configurable demo endpoint, complete CI enforcement, and broader container evidence remain pending.
+Gate passed on: 2026-10-01
+```
+
+### T03 evidence record
+
+```text
+Task ID: T03
+Owner / reviewer: Audit / project owner
+Implementation reference: audit/include/audit.h, audit/src/ipc.c, audit/src/hooks.c, audit/src/audit.c, tests/fixtures/wire_receiver.c
+Environment and toolchain: Linux local checkout; GCC and glibc loader audit interface
+Validation performed and result: C audit library built; controlled receiver validated magic/version/length/event/PID/TID over configured SOCK_SEQPACKET; audit suite passed 12/12 with verbose and endpoint checks.
+Affected issue IDs and disposition: I02 fixed in sender scope; I05 partially fixed at source identity/lifecycle; I11 fixed for truthful unknown origin; I12 fixed with close cleanup/capacity reporting; I15 fixed for sender endpoint override; I17 fixed at wire-source scope. Collector and cross-component compatibility remain T04.
+Remaining limitations: Concurrent stress, sustained-loss measurement, and collector decoding/peer policy remain T04/T09 evidence.
 Gate passed on: 2026-10-01
 ```
 

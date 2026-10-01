@@ -166,6 +166,33 @@ else
   fail "Events did not fire for one or more binaries"
 fi
 
+# ── Test 11: v1 packet reaches a controlled seqpacket receiver ────────────────
+info "Test 11 — v1 wire record and custom endpoint"
+WIRE_RECEIVER_BIN="$TEST_DIR/wire_receiver"
+WIRE_SOCKET="$TEST_DIR/ldwatch.sock"
+if gcc -Wall -Wextra -o "$WIRE_RECEIVER_BIN" tests/fixtures/wire_receiver.c; then
+  timeout 5 "$WIRE_RECEIVER_BIN" "$WIRE_SOCKET" >"$TEST_DIR/wire.out" 2>&1 &
+  RECEIVER_PID=$!
+  for _ in $(seq 1 100); do
+    [ -S "$WIRE_SOCKET" ] && break
+    sleep 0.01
+  done
+  if LDWATCH_SOCKET="$WIRE_SOCKET" LDWATCH_VERBOSE=0 LD_AUDIT="$AUDIT_LIB" \
+    /bin/true >/dev/null 2>&1; then
+    if wait "$RECEIVER_PID" && grep -q '^WIRE_OK ' "$TEST_DIR/wire.out"; then
+      pass "v1 1024-byte record delivered over configured SOCK_SEQPACKET endpoint"
+    else
+      fail "controlled receiver rejected the v1 record: $(cat "$TEST_DIR/wire.out")"
+    fi
+  else
+    fail "audited fixture failed while using the configured endpoint"
+    kill "$RECEIVER_PID" 2>/dev/null || true
+    wait "$RECEIVER_PID" 2>/dev/null || true
+  fi
+else
+  fail "Could not compile controlled wire receiver"
+fi
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo ""
 echo "────────────────────────────────────"

@@ -3,7 +3,10 @@
 #include <link.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdlib.h>
 #include <unistd.h>
+
+static int ldw_verbose = 1;
 
 /*
  * la_version — first function ld.so calls into our audit library.
@@ -14,14 +17,39 @@
 unsigned int la_version(unsigned int version)
 {
     (void)version;
-    ldw_write_str(LDW_TAG "audit library loaded (pid=");
-    ldw_write_pid();
-    ldw_write_str(")\n");
+    const char *verbose = getenv("LDWATCH_VERBOSE");
+    if (verbose && verbose[0] == '0' && verbose[1] == '\0')
+        ldw_verbose = 0;
+
+    if (ldw_verbose)
+    {
+        ldw_write_str(LDW_TAG "audit library loaded (pid=");
+        ldw_write_pid();
+        ldw_write_str(")\n");
+    }
 
     /* Connect to collector daemon; no-op if not running */
     ldw_ipc_init();
 
     return LAV_CURRENT;
+}
+
+int ldw_verbose_enabled(void) { return ldw_verbose; }
+
+void ldw_copy_field(char *dst, size_t dst_size, const char *src,
+                    uint16_t *flags, uint16_t truncation_flag)
+{
+    size_t i = 0;
+    if (dst_size == 0)
+        return;
+    while (src && src[i] && i + 1 < dst_size)
+    {
+        dst[i] = src[i];
+        i++;
+    }
+    dst[i] = '\0';
+    if (src && src[i] != '\0' && flags)
+        *flags |= truncation_flag;
 }
 
 /* Safe write helpers */
