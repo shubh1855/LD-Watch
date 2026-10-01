@@ -76,16 +76,16 @@ Owner: collector. Plan: F04. Issues: I03, I04, I05, I10, I16, I17.
 
 Owner: store + collector. Plan: F05. Issues: I05, I06, I07, I14, I18, I19, I24.
 
-- [ ] Create versioned migrations for events, process instances, baselines and alerts agreed in T01.
-- [ ] Implement lifecycle-aware executable enrichment and replace the forever PID cache.
-- [ ] Preserve searches distinctly and uncertainty explicitly.
-- [ ] Remove executable placeholders from storage helpers.
-- [ ] Implement shared queries and regenerate sqlc code.
-- [ ] Add justified indexes, bounded failure handling and health counters.
-- [ ] Close resources on initialization failures; define retention and disk-full behavior.
-- [ ] Verify fresh/existing database migration and real-source telemetry persistence.
+- [x] Create versioned migrations for events, process instances, baselines and alerts agreed in T01.
+- [x] Implement lifecycle-aware executable enrichment and replace the forever PID cache.
+- [x] Preserve searches distinctly and uncertainty explicitly.
+- [x] Remove executable placeholders from storage helpers.
+- [x] Implement shared queries and regenerate sqlc code.
+- [x] Add justified indexes, bounded failure handling and health counters.
+- [x] Close resources on initialization failures; define retention and disk-full behavior.
+- [x] Verify fresh/existing database migration and real-source telemetry persistence.
 
-**Gate:** Correctly attributed telemetry persists through the real C/collector path. Stable queries are ready for baselines, rules and CLI.
+**Gate:** Passed locally 2026-10-01. Versioned transactional migrations preserve legacy evidence; lifecycle-aware telemetry and uncertainty persist through the real C/socket/collector path (9 records, 4 loads). Shared queries are regenerated for baseline, rules and CLI work. See [`persistence.md`](persistence.md) for policy, validation and limits.
 
 ## T06 — Complete baseline learning and approval
 
@@ -220,6 +220,19 @@ Validation performed and result: Full Go suite passed; socket tests cover unsafe
 Affected issue IDs and disposition: I03 fixed; I04 fixed in ingress scope; I05 remains partial pending T05 process-instance enrichment; I10 fixed; I16 fixed; I17 fixed at ingress/decode scope.
 Remaining limitations: Schema migration, durable lifecycle attribution, retention/health policy, and full sustained-load evidence remain T05/T09.
 Gate passed on: 2026-10-01
+```
+
+### T05 evidence record
+
+```text
+Task ID: T05
+Owner / reviewer: Store + collector / independent review pending
+Implementation reference: internal/store/migrations, schema.sql, queries.sql and generated sqlc output; internal/store/persistence.go; internal/collector/processor.go; docs/persistence.md
+Environment and toolchain: Linux via WSL, Go 1.26.1 runtime checks, GCC/glibc, SQLite; pinned sqlc v1.31.1 generated with its selected Go 1.26.8 toolchain
+Validation performed and result: go test -race ./... and go vet ./... passed. Real C audit source through Unix socket and four workers persisted 9 records including 4 confirmed loads for /usr/bin/true with process lifetime and peer identity. Tests cover fresh/unversioned migrations, legacy preservation, repeat migration, migration rollback, initialization cleanup, restart persistence, atomic event failure, bounded busy waits, SQLite disk-full behavior, retention, lifetime/PID reuse, exec replacement, searches/closes, full unsigned values, canonical alerts and scoped baseline queries.
+Affected issue IDs and disposition: I05 fixed in attribution/persistence scope; I14, I18, I19 fixed; I06/I07 schema and query prerequisites delivered, baseline workflow remains T06; I24 storage documentation updated, overall reconciliation remains T11.
+Remaining limitations: Independent review pending. Unresolved records are not guessed or coalesced; counters reset on restart; retention is explicit and disabled by default; no durable overflow spool. Baseline approval, rule evaluation, CLI workflows and sustained-load evidence remain T06–T09.
+Gate passed on: 2026-10-01 (local acceptance)
 ```
 
 Use this for each completed task in the team's issue tracker or appended records:

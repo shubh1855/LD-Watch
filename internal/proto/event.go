@@ -140,9 +140,9 @@ func (e *Event) EventTypeName() string {
 	case EventSOSearch:
 		return "SEARCH"
 	case EventSOLoad:
-		return "SO_LOAD"
+		return "LOAD"
 	case EventSymBind:
-		return "SYM_BIND"
+		return "SYMBOL_BIND"
 	case EventObjectClose:
 		return "OBJECT_CLOSE"
 	default:

@@ -154,3 +154,15 @@ Addresses I22, I23, I24 and validates all fixes.
 - Verify bibliography and remote repository settings separately; do not claim they were checked by the source review.
 
 **Acceptance:** A fresh Linux checkout passes required gates and produces a reproducible report. Documentation distinguishes tested behavior, limitations and deferred work.
+
+## F05 implementation evidence (2026-10-01)
+
+T05 is implemented and locally verified. Versioned migrations and generated
+shared queries now supply lifetime-aware events, baseline storage primitives,
+and canonical alert persistence. The collector uses event-time executable
+metadata with explicit uncertainty, commits registry/event updates atomically,
+and reports bounded persistence failures. Legacy observations stay archival.
+See [persistence.md](persistence.md) for schema compatibility, retention,
+disk-full behavior, validation and remaining limits, and the T05 evidence
+record in [pending-tasks.md](pending-tasks.md). Baseline workflows and actual
+rule-to-alert integration remain F06/F07.

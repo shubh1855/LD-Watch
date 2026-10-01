@@ -50,7 +50,7 @@ func newPipeline(t *testing.T, numWorkers int) *pipeline {
 
 	q := store.New(db)
 	p := &pipeline{SockPath: sockPath, Queries: q, ln: ln, db: db}
-	processor := collector.NewProcessor(q, func(pid uint32) string { return "test-exe" })
+	processor := collector.NewProcessor(q)
 
 	ln.Start()
 
@@ -92,12 +92,14 @@ func sendEvents(t *testing.T, sockPath string, evs ...*proto.Event) {
 	t.Helper()
 	conn, err := net.Dial("unixpacket", sockPath)
 	if err != nil {
-		t.Fatalf("dial: %v", err)
+		t.Errorf("dial: %v", err)
+		return
 	}
 	defer conn.Close()
 	for _, ev := range evs {
 		if _, err := conn.Write(ev.MarshalBinary()); err != nil {
-			t.Fatalf("binary.Write: %v", err)
+			t.Errorf("binary.Write: %v", err)
+			return
 		}
 	}
 }
@@ -244,8 +246,8 @@ func TestCollectorWritesToSQLite(t *testing.T) {
 	if symRows[0].SymbolName != "SSL_read" {
 		t.Errorf("symbol_name: got %q", symRows[0].SymbolName)
 	}
-	if symRows[0].ResolvedAddr != 0xdeadbeef {
-		t.Errorf("resolved_addr: got %#x, want 0xdeadbeef", symRows[0].ResolvedAddr)
+	if symRows[0].ResolvedAddr != "deadbeef" {
+		t.Errorf("resolved_addr: got %s, want deadbeef", symRows[0].ResolvedAddr)
 	}
 }
 
