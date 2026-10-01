@@ -1,32 +1,71 @@
 package store
 
 import (
+	"context"
 	"database/sql"
-	_ "embed"
-
+	"embed"
+	"fmt"
 	_ "modernc.org/sqlite"
+	"time"
 )
 
-//go:embed schema.sql
-var ddl string
+//go:embed migrations/*.sql
+var migrations embed.FS
 
-// Open opens (or creates) the SQLite database at path and verifies connectivity.
-// MaxOpenConns is capped at 1: SQLite serialises writes, and :memory: databases
-// are per-connection (a second connection would see a different, empty DB).
+// Open bounds SQLite lock waits and serializes writes.
 func Open(path string) (*sql.DB, error) {
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		return nil, err
 	}
 	db.SetMaxOpenConns(1)
-	if err := db.Ping(); err != nil {
+	db.SetMaxIdleConns(1)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err = db.PingContext(ctx); err == nil {
+		_, err = db.ExecContext(ctx, "PRAGMA foreign_keys=ON; PRAGMA busy_timeout=250;")
+	}
+	if err != nil {
+		db.Close()
 		return nil, err
 	}
 	return db, nil
 }
 
-// Migrate runs the CREATE TABLE IF NOT EXISTS DDL statements from schema.sql.
+// Migrate atomically applies versions and markers; v1 adopts unversioned DBs.
 func Migrate(db *sql.DB) error {
-	_, err := db.Exec(ddl)
-	return err
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err = tx.ExecContext(ctx, "CREATE TABLE IF NOT EXISTS schema_migrations(version INTEGER PRIMARY KEY)"); err != nil {
+		return err
+	}
+	var version int
+	if err = tx.QueryRowContext(ctx, "SELECT COALESCE(MAX(version),0) FROM schema_migrations").Scan(&version); err != nil {
+		return err
+	}
+	names := []string{"001_legacy.sql", "002_attribution.sql"}
+	if version > len(names) {
+		return fmt.Errorf("unsupported schema version %d", version)
+	}
+	for i, name := range names {
+		if i+1 <= version {
+			continue
+		}
+		ddl, err := migrations.ReadFile("migrations/" + name)
+		if err != nil {
+			return err
+		}
+		if _, err = tx.ExecContext(ctx, string(ddl)); err != nil {
+			return fmt.Errorf("migration %d: %w", i+1, err)
+		}
+		if _, err = tx.ExecContext(ctx, "INSERT INTO schema_migrations(version) VALUES (?)", i+1); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }

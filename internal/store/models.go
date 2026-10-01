@@ -9,6 +9,44 @@ import (
 )
 
 type Alert struct {
+	ID               string
+	Severity         string
+	Rule             string
+	ProcessKey       string
+	Pid              int64
+	Exe              string
+	Detail           string
+	Timestamp        int64
+	DeduplicationKey string
+}
+
+type BaselineCandidate struct {
+	Exe              string
+	EnvironmentKey   string
+	EntryType        string
+	Identity         string
+	Symbol           string
+	ObservationCount int64
+}
+
+type BaselineEntry struct {
+	BaselineID int64
+	EntryType  string
+	Identity   string
+	Symbol     string
+	Optional   int64
+}
+
+type BaselineVersion struct {
+	ID             int64
+	Exe            string
+	EnvironmentKey string
+	Version        int64
+	ApprovalState  string
+	Metadata       string
+}
+
+type LegacyAlert struct {
 	ID        int64
 	Severity  string
 	Rule      string
@@ -18,11 +56,54 @@ type Alert struct {
 	Timestamp int64
 }
 
+type LegacyBaselineEvent struct {
+	ID           int64
+	Pid          int64
+	EventType    int64
+	SoPath       sql.NullString
+	SymbolName   sql.NullString
+	ResolvedSo   sql.NullString
+	ResolvedAddr sql.NullInt64
+	Timestamp    int64
+}
+
+type LoaderEvent struct {
+	ID             int64
+	ProcessKey     string
+	Pid            int64
+	Tid            int64
+	Exe            string
+	WireExe        string
+	IdentityStatus string
+	EventType      string
+	Origin         string
+	Flags          int64
+	NamespaceID    string
+	SubjectPath    string
+	RelatedPath    string
+	Symbol         string
+	ResolvedAddr   string
+	Timestamp      int64
+	PeerPid        int64
+	PeerUid        int64
+	PeerGid        int64
+}
+
 type Process struct {
 	Pid       int64
 	Exe       string
 	Cmdline   sql.NullString
 	FirstSeen int64
+}
+
+type ProcessInstance struct {
+	ProcessKey     string
+	Pid            int64
+	StartTicks     string
+	Exe            string
+	IdentityStatus string
+	FirstSeen      int64
+	LastSeen       int64
 }
 
 type SoEvent struct {

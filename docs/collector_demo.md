@@ -52,13 +52,13 @@ You should see `[ldwatch]` audit logs on stderr. The audit library also sends bi
 ## Query SQLite live
 
 ```sh
-sqlite3 /var/ldwatch/events.db "SELECT id,pid,exe,so_path,mechanism,timestamp FROM so_events LIMIT 10;"
+sqlite3 /var/ldwatch/events.db "SELECT id,process_key,pid,exe,event_type,subject_path,origin,timestamp FROM loader_events ORDER BY id LIMIT 10;"
 ```
 
 Optional prettier output:
 
 ```sh
-sqlite3 /var/ldwatch/events.db ".headers on" ".mode column" "SELECT id,pid,exe,so_path,mechanism,timestamp FROM so_events LIMIT 10;"
+sqlite3 /var/ldwatch/events.db ".headers on" ".mode column" "SELECT id,process_key,pid,exe,event_type,subject_path,origin,timestamp FROM loader_events ORDER BY id LIMIT 10;"
 ```
 
 To verify the schema exists:
@@ -67,7 +67,7 @@ To verify the schema exists:
 sqlite3 /var/ldwatch/events.db ".tables"
 ```
 
-You should see tables including `so_events`, `symbol_events`, `processes`, and `alerts`.
+You should see `loader_events`, `process_instances`, baseline tables, and `alerts`. The old `so_events`, `symbol_events`, and `processes` tables contain legacy evidence only; see [T05 persistence](persistence.md).
 
 ## Docker flow
 
@@ -99,7 +99,7 @@ Terminal 2:
 cd /ld-watch
 LD_AUDIT=./audit/audit.so ls /tmp
 sqlite3 /var/ldwatch/events.db ".tables"
-sqlite3 /var/ldwatch/events.db "SELECT id,pid,exe,so_path,mechanism,timestamp FROM so_events LIMIT 10;"
+sqlite3 /var/ldwatch/events.db "SELECT id,process_key,pid,exe,event_type,subject_path,origin,timestamp FROM loader_events ORDER BY id LIMIT 10;"
 ```
 
 Do not run the collector in one container and `LD_AUDIT` or `sqlite3` in another. Each container has its own `/run` and `/var`, so the socket and database will not be shared unless you explicitly mount them.

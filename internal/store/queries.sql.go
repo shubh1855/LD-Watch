@@ -7,120 +7,220 @@ package store
 
 import (
 	"context"
-	"database/sql"
 )
 
+const deleteExpiredEvents = `-- name: DeleteExpiredEvents :execrows
+DELETE FROM loader_events WHERE id IN (SELECT id FROM loader_events WHERE loader_events.timestamp > 0 AND loader_events.timestamp < ? AND event_type IN ('SEARCH','LOAD','SYMBOL_BIND','OBJECT_CLOSE') ORDER BY loader_events.timestamp LIMIT ?)
+`
+
+type DeleteExpiredEventsParams struct {
+	Timestamp int64
+	Limit     int64
+}
+
+func (q *Queries) DeleteExpiredEvents(ctx context.Context, arg DeleteExpiredEventsParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteExpiredEvents, arg.Timestamp, arg.Limit)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const getApprovedBaseline = `-- name: GetApprovedBaseline :one
+SELECT id, exe, environment_key, version, approval_state, metadata FROM baseline_versions WHERE exe = ? AND environment_key = ? AND version = ? AND approval_state = 'approved'
+`
+
+type GetApprovedBaselineParams struct {
+	Exe            string
+	EnvironmentKey string
+	Version        int64
+}
+
+func (q *Queries) GetApprovedBaseline(ctx context.Context, arg GetApprovedBaselineParams) (BaselineVersion, error) {
+	row := q.db.QueryRowContext(ctx, getApprovedBaseline, arg.Exe, arg.EnvironmentKey, arg.Version)
+	var i BaselineVersion
+	err := row.Scan(
+		&i.ID,
+		&i.Exe,
+		&i.EnvironmentKey,
+		&i.Version,
+		&i.ApprovalState,
+		&i.Metadata,
+	)
+	return i, err
+}
+
+const getProcessInstance = `-- name: GetProcessInstance :one
+SELECT process_key, pid, start_ticks, exe, identity_status, first_seen, last_seen FROM process_instances WHERE process_key = ?
+`
+
+func (q *Queries) GetProcessInstance(ctx context.Context, processKey string) (ProcessInstance, error) {
+	row := q.db.QueryRowContext(ctx, getProcessInstance, processKey)
+	var i ProcessInstance
+	err := row.Scan(
+		&i.ProcessKey,
+		&i.Pid,
+		&i.StartTicks,
+		&i.Exe,
+		&i.IdentityStatus,
+		&i.FirstSeen,
+		&i.LastSeen,
+	)
+	return i, err
+}
+
 const insertAlert = `-- name: InsertAlert :one
-INSERT INTO alerts (severity, rule, pid, exe, detail, timestamp)
-VALUES (?, ?, ?, ?, ?, ?)
-RETURNING id, severity, rule, pid, exe, detail, timestamp
+INSERT INTO alerts(id,severity,rule,process_key,pid,exe,detail,timestamp,deduplication_key)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, severity, rule, process_key, pid, exe, detail, timestamp, deduplication_key
 `
 
 type InsertAlertParams struct {
-	Severity  string
-	Rule      string
-	Pid       int64
-	Exe       string
-	Detail    string
-	Timestamp int64
+	ID               string
+	Severity         string
+	Rule             string
+	ProcessKey       string
+	Pid              int64
+	Exe              string
+	Detail           string
+	Timestamp        int64
+	DeduplicationKey string
 }
 
 func (q *Queries) InsertAlert(ctx context.Context, arg InsertAlertParams) (Alert, error) {
 	row := q.db.QueryRowContext(ctx, insertAlert,
+		arg.ID,
 		arg.Severity,
 		arg.Rule,
+		arg.ProcessKey,
 		arg.Pid,
 		arg.Exe,
 		arg.Detail,
 		arg.Timestamp,
+		arg.DeduplicationKey,
 	)
 	var i Alert
 	err := row.Scan(
 		&i.ID,
 		&i.Severity,
 		&i.Rule,
+		&i.ProcessKey,
 		&i.Pid,
 		&i.Exe,
 		&i.Detail,
 		&i.Timestamp,
+		&i.DeduplicationKey,
 	)
 	return i, err
 }
 
-const insertProcess = `-- name: InsertProcess :exec
-INSERT OR IGNORE INTO processes (pid, exe, cmdline, first_seen)
-VALUES (?, ?, ?, ?)
+const insertBaselineEntry = `-- name: InsertBaselineEntry :exec
+INSERT INTO baseline_entries(baseline_id,entry_type,identity,symbol,optional) VALUES (?, ?, ?, ?, ?)
 `
 
-type InsertProcessParams struct {
-	Pid       int64
-	Exe       string
-	Cmdline   sql.NullString
-	FirstSeen int64
+type InsertBaselineEntryParams struct {
+	BaselineID int64
+	EntryType  string
+	Identity   string
+	Symbol     string
+	Optional   int64
 }
 
-func (q *Queries) InsertProcess(ctx context.Context, arg InsertProcessParams) error {
-	_, err := q.db.ExecContext(ctx, insertProcess,
-		arg.Pid,
-		arg.Exe,
-		arg.Cmdline,
-		arg.FirstSeen,
+func (q *Queries) InsertBaselineEntry(ctx context.Context, arg InsertBaselineEntryParams) error {
+	_, err := q.db.ExecContext(ctx, insertBaselineEntry,
+		arg.BaselineID,
+		arg.EntryType,
+		arg.Identity,
+		arg.Symbol,
+		arg.Optional,
 	)
 	return err
 }
 
-const insertSOEvent = `-- name: InsertSOEvent :exec
-INSERT INTO so_events (pid, exe, so_path, mechanism, timestamp)
-VALUES (?, ?, ?, ?, ?)
+const insertBaselineVersion = `-- name: InsertBaselineVersion :one
+INSERT INTO baseline_versions(exe,environment_key,version,approval_state,metadata)
+VALUES (?, ?, ?, ?, ?) RETURNING id, exe, environment_key, version, approval_state, metadata
 `
 
-type InsertSOEventParams struct {
-	Pid       int64
-	Exe       string
-	SoPath    string
-	Mechanism string
-	Timestamp int64
+type InsertBaselineVersionParams struct {
+	Exe            string
+	EnvironmentKey string
+	Version        int64
+	ApprovalState  string
+	Metadata       string
 }
 
-func (q *Queries) InsertSOEvent(ctx context.Context, arg InsertSOEventParams) error {
-	_, err := q.db.ExecContext(ctx, insertSOEvent,
-		arg.Pid,
+func (q *Queries) InsertBaselineVersion(ctx context.Context, arg InsertBaselineVersionParams) (BaselineVersion, error) {
+	row := q.db.QueryRowContext(ctx, insertBaselineVersion,
 		arg.Exe,
-		arg.SoPath,
-		arg.Mechanism,
-		arg.Timestamp,
+		arg.EnvironmentKey,
+		arg.Version,
+		arg.ApprovalState,
+		arg.Metadata,
 	)
-	return err
+	var i BaselineVersion
+	err := row.Scan(
+		&i.ID,
+		&i.Exe,
+		&i.EnvironmentKey,
+		&i.Version,
+		&i.ApprovalState,
+		&i.Metadata,
+	)
+	return i, err
 }
 
-const insertSymbolEvent = `-- name: InsertSymbolEvent :exec
-INSERT INTO symbol_events (pid, exe, symbol_name, resolved_so, resolved_addr, timestamp)
-VALUES (?, ?, ?, ?, ?, ?)
+const insertLoaderEvent = `-- name: InsertLoaderEvent :exec
+INSERT INTO loader_events(process_key,pid,tid,exe,wire_exe,identity_status,event_type,origin,flags,namespace_id,subject_path,related_path,symbol,resolved_addr,timestamp,peer_pid,peer_uid,peer_gid)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
-type InsertSymbolEventParams struct {
-	Pid          int64
-	Exe          string
-	SymbolName   string
-	ResolvedSo   string
-	ResolvedAddr int64
-	Timestamp    int64
+type InsertLoaderEventParams struct {
+	ProcessKey     string
+	Pid            int64
+	Tid            int64
+	Exe            string
+	WireExe        string
+	IdentityStatus string
+	EventType      string
+	Origin         string
+	Flags          int64
+	NamespaceID    string
+	SubjectPath    string
+	RelatedPath    string
+	Symbol         string
+	ResolvedAddr   string
+	Timestamp      int64
+	PeerPid        int64
+	PeerUid        int64
+	PeerGid        int64
 }
 
-func (q *Queries) InsertSymbolEvent(ctx context.Context, arg InsertSymbolEventParams) error {
-	_, err := q.db.ExecContext(ctx, insertSymbolEvent,
+func (q *Queries) InsertLoaderEvent(ctx context.Context, arg InsertLoaderEventParams) error {
+	_, err := q.db.ExecContext(ctx, insertLoaderEvent,
+		arg.ProcessKey,
 		arg.Pid,
+		arg.Tid,
 		arg.Exe,
-		arg.SymbolName,
-		arg.ResolvedSo,
+		arg.WireExe,
+		arg.IdentityStatus,
+		arg.EventType,
+		arg.Origin,
+		arg.Flags,
+		arg.NamespaceID,
+		arg.SubjectPath,
+		arg.RelatedPath,
+		arg.Symbol,
 		arg.ResolvedAddr,
 		arg.Timestamp,
+		arg.PeerPid,
+		arg.PeerUid,
+		arg.PeerGid,
 	)
 	return err
 }
 
 const listAlerts = `-- name: ListAlerts :many
-SELECT id, severity, rule, pid, exe, detail, timestamp FROM alerts ORDER BY timestamp DESC LIMIT ?
+SELECT id, severity, rule, process_key, pid, exe, detail, timestamp, deduplication_key FROM alerts ORDER BY timestamp DESC, id LIMIT ?
 `
 
 func (q *Queries) ListAlerts(ctx context.Context, limit int64) ([]Alert, error) {
@@ -136,10 +236,12 @@ func (q *Queries) ListAlerts(ctx context.Context, limit int64) ([]Alert, error) 
 			&i.ID,
 			&i.Severity,
 			&i.Rule,
+			&i.ProcessKey,
 			&i.Pid,
 			&i.Exe,
 			&i.Detail,
 			&i.Timestamp,
+			&i.DeduplicationKey,
 		); err != nil {
 			return nil, err
 		}
@@ -155,7 +257,7 @@ func (q *Queries) ListAlerts(ctx context.Context, limit int64) ([]Alert, error) 
 }
 
 const listAlertsBySeverity = `-- name: ListAlertsBySeverity :many
-SELECT id, severity, rule, pid, exe, detail, timestamp FROM alerts WHERE severity = ? ORDER BY timestamp DESC LIMIT ?
+SELECT id, severity, rule, process_key, pid, exe, detail, timestamp, deduplication_key FROM alerts WHERE severity = ? ORDER BY timestamp DESC, id LIMIT ?
 `
 
 type ListAlertsBySeverityParams struct {
@@ -176,10 +278,189 @@ func (q *Queries) ListAlertsBySeverity(ctx context.Context, arg ListAlertsBySeve
 			&i.ID,
 			&i.Severity,
 			&i.Rule,
+			&i.ProcessKey,
 			&i.Pid,
 			&i.Exe,
 			&i.Detail,
 			&i.Timestamp,
+			&i.DeduplicationKey,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listBaselineCandidates = `-- name: ListBaselineCandidates :many
+SELECT exe, environment_key, entry_type, identity, symbol, observation_count FROM baseline_candidates WHERE exe = ? AND environment_key = ? ORDER BY entry_type,identity,symbol
+`
+
+type ListBaselineCandidatesParams struct {
+	Exe            string
+	EnvironmentKey string
+}
+
+func (q *Queries) ListBaselineCandidates(ctx context.Context, arg ListBaselineCandidatesParams) ([]BaselineCandidate, error) {
+	rows, err := q.db.QueryContext(ctx, listBaselineCandidates, arg.Exe, arg.EnvironmentKey)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []BaselineCandidate
+	for rows.Next() {
+		var i BaselineCandidate
+		if err := rows.Scan(
+			&i.Exe,
+			&i.EnvironmentKey,
+			&i.EntryType,
+			&i.Identity,
+			&i.Symbol,
+			&i.ObservationCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listBaselineEntries = `-- name: ListBaselineEntries :many
+SELECT baseline_id, entry_type, identity, symbol, optional FROM baseline_entries WHERE baseline_id = ? ORDER BY entry_type,identity,symbol
+`
+
+func (q *Queries) ListBaselineEntries(ctx context.Context, baselineID int64) ([]BaselineEntry, error) {
+	rows, err := q.db.QueryContext(ctx, listBaselineEntries, baselineID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []BaselineEntry
+	for rows.Next() {
+		var i BaselineEntry
+		if err := rows.Scan(
+			&i.BaselineID,
+			&i.EntryType,
+			&i.Identity,
+			&i.Symbol,
+			&i.Optional,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listEventsForProcess = `-- name: ListEventsForProcess :many
+SELECT id, process_key, pid, tid, exe, wire_exe, identity_status, event_type, origin, flags, namespace_id, subject_path, related_path, symbol, resolved_addr, timestamp, peer_pid, peer_uid, peer_gid FROM loader_events WHERE process_key = ? AND id > ? ORDER BY id LIMIT ?
+`
+
+type ListEventsForProcessParams struct {
+	ProcessKey string
+	ID         int64
+	Limit      int64
+}
+
+func (q *Queries) ListEventsForProcess(ctx context.Context, arg ListEventsForProcessParams) ([]LoaderEvent, error) {
+	rows, err := q.db.QueryContext(ctx, listEventsForProcess, arg.ProcessKey, arg.ID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []LoaderEvent
+	for rows.Next() {
+		var i LoaderEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProcessKey,
+			&i.Pid,
+			&i.Tid,
+			&i.Exe,
+			&i.WireExe,
+			&i.IdentityStatus,
+			&i.EventType,
+			&i.Origin,
+			&i.Flags,
+			&i.NamespaceID,
+			&i.SubjectPath,
+			&i.RelatedPath,
+			&i.Symbol,
+			&i.ResolvedAddr,
+			&i.Timestamp,
+			&i.PeerPid,
+			&i.PeerUid,
+			&i.PeerGid,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLoaderEvents = `-- name: ListLoaderEvents :many
+SELECT id, process_key, pid, tid, exe, wire_exe, identity_status, event_type, origin, flags, namespace_id, subject_path, related_path, symbol, resolved_addr, timestamp, peer_pid, peer_uid, peer_gid FROM loader_events WHERE id > ? ORDER BY id LIMIT ?
+`
+
+type ListLoaderEventsParams struct {
+	ID    int64
+	Limit int64
+}
+
+func (q *Queries) ListLoaderEvents(ctx context.Context, arg ListLoaderEventsParams) ([]LoaderEvent, error) {
+	rows, err := q.db.QueryContext(ctx, listLoaderEvents, arg.ID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []LoaderEvent
+	for rows.Next() {
+		var i LoaderEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProcessKey,
+			&i.Pid,
+			&i.Tid,
+			&i.Exe,
+			&i.WireExe,
+			&i.IdentityStatus,
+			&i.EventType,
+			&i.Origin,
+			&i.Flags,
+			&i.NamespaceID,
+			&i.SubjectPath,
+			&i.RelatedPath,
+			&i.Symbol,
+			&i.ResolvedAddr,
+			&i.Timestamp,
+			&i.PeerPid,
+			&i.PeerUid,
+			&i.PeerGid,
 		); err != nil {
 			return nil, err
 		}
@@ -195,18 +476,28 @@ func (q *Queries) ListAlertsBySeverity(ctx context.Context, arg ListAlertsBySeve
 }
 
 const listSOEventsForPID = `-- name: ListSOEventsForPID :many
-SELECT id, pid, exe, so_path, mechanism, timestamp FROM so_events WHERE pid = ? ORDER BY timestamp ASC
+SELECT id,pid,exe,subject_path AS so_path,origin AS mechanism,timestamp FROM loader_events
+WHERE pid = ? AND event_type = 'LOAD' ORDER BY timestamp, id
 `
 
-func (q *Queries) ListSOEventsForPID(ctx context.Context, pid int64) ([]SoEvent, error) {
+type ListSOEventsForPIDRow struct {
+	ID        int64
+	Pid       int64
+	Exe       string
+	SoPath    string
+	Mechanism string
+	Timestamp int64
+}
+
+func (q *Queries) ListSOEventsForPID(ctx context.Context, pid int64) ([]ListSOEventsForPIDRow, error) {
 	rows, err := q.db.QueryContext(ctx, listSOEventsForPID, pid)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []SoEvent
+	var items []ListSOEventsForPIDRow
 	for rows.Next() {
-		var i SoEvent
+		var i ListSOEventsForPIDRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Pid,
@@ -229,18 +520,29 @@ func (q *Queries) ListSOEventsForPID(ctx context.Context, pid int64) ([]SoEvent,
 }
 
 const listSymbolEventsForPID = `-- name: ListSymbolEventsForPID :many
-SELECT id, pid, exe, symbol_name, resolved_so, resolved_addr, timestamp FROM symbol_events WHERE pid = ? ORDER BY timestamp ASC
+SELECT id,pid,exe,symbol AS symbol_name,subject_path AS resolved_so,resolved_addr,timestamp FROM loader_events
+WHERE pid = ? AND event_type = 'SYMBOL_BIND' ORDER BY timestamp, id
 `
 
-func (q *Queries) ListSymbolEventsForPID(ctx context.Context, pid int64) ([]SymbolEvent, error) {
+type ListSymbolEventsForPIDRow struct {
+	ID           int64
+	Pid          int64
+	Exe          string
+	SymbolName   string
+	ResolvedSo   string
+	ResolvedAddr string
+	Timestamp    int64
+}
+
+func (q *Queries) ListSymbolEventsForPID(ctx context.Context, pid int64) ([]ListSymbolEventsForPIDRow, error) {
 	rows, err := q.db.QueryContext(ctx, listSymbolEventsForPID, pid)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []SymbolEvent
+	var items []ListSymbolEventsForPIDRow
 	for rows.Next() {
-		var i SymbolEvent
+		var i ListSymbolEventsForPIDRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Pid,
@@ -261,4 +563,62 @@ func (q *Queries) ListSymbolEventsForPID(ctx context.Context, pid int64) ([]Symb
 		return nil, err
 	}
 	return items, nil
+}
+
+const upsertBaselineCandidate = `-- name: UpsertBaselineCandidate :exec
+INSERT INTO baseline_candidates(exe,environment_key,entry_type,identity,symbol,observation_count)
+VALUES (?, ?, ?, ?, ?, 1)
+ON CONFLICT(exe,environment_key,entry_type,identity,symbol)
+DO UPDATE SET observation_count=observation_count+1
+`
+
+type UpsertBaselineCandidateParams struct {
+	Exe            string
+	EnvironmentKey string
+	EntryType      string
+	Identity       string
+	Symbol         string
+}
+
+func (q *Queries) UpsertBaselineCandidate(ctx context.Context, arg UpsertBaselineCandidateParams) error {
+	_, err := q.db.ExecContext(ctx, upsertBaselineCandidate,
+		arg.Exe,
+		arg.EnvironmentKey,
+		arg.EntryType,
+		arg.Identity,
+		arg.Symbol,
+	)
+	return err
+}
+
+const upsertProcessInstance = `-- name: UpsertProcessInstance :exec
+INSERT INTO process_instances(process_key,pid,start_ticks,exe,identity_status,first_seen,last_seen)
+VALUES (?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(process_key) DO UPDATE SET
+first_seen=MIN(first_seen,excluded.first_seen), last_seen=MAX(last_seen,excluded.last_seen),
+exe=CASE WHEN excluded.exe != '' AND excluded.last_seen >= last_seen THEN excluded.exe ELSE exe END,
+identity_status=CASE WHEN excluded.exe != '' AND excluded.last_seen >= last_seen THEN excluded.identity_status ELSE identity_status END
+`
+
+type UpsertProcessInstanceParams struct {
+	ProcessKey     string
+	Pid            int64
+	StartTicks     string
+	Exe            string
+	IdentityStatus string
+	FirstSeen      int64
+	LastSeen       int64
+}
+
+func (q *Queries) UpsertProcessInstance(ctx context.Context, arg UpsertProcessInstanceParams) error {
+	_, err := q.db.ExecContext(ctx, upsertProcessInstance,
+		arg.ProcessKey,
+		arg.Pid,
+		arg.StartTicks,
+		arg.Exe,
+		arg.IdentityStatus,
+		arg.FirstSeen,
+		arg.LastSeen,
+	)
+	return err
 }

@@ -76,3 +76,12 @@ Read [fix plans](fixes.md) for remediation and [ordered pending tasks](pending-t
 - [Linux audit API](https://man7.org/linux/man-pages/man7/rtld-audit.7.html): search callbacks describe candidates; object-open callbacks describe loads; object-close callbacks support lifecycle tracking.
 - [Unix sockets](https://man7.org/linux/man-pages/man7/unix.7.html): peer credentials and stream/signal behavior.
 - [Dynamic loader](https://man7.org/linux/man-pages/man8/ld.so.8.html): instrumentation and secure-execution scope.
+
+## T05 dispositions (2026-10-01)
+
+- **I05 — fixed in persistence scope.** Process lifetime keys, source executable snapshots, explicit unresolved identity, and per-event peer/TID/namespace metadata are persisted atomically. PID reuse and exec replacement are tested; no PID-only cache or delayed executable lookup remains.
+- **I06/I07 — shared schema/query prerequisites implemented.** Candidates, numbered approval-state versions, entries, and executable/environment/version queries are supplied. Workflow and engine integration remain T06/T07; old global profiler evidence stays legacy.
+- **I14 — fixed.** High-level storage helpers use the shared executable resolver and require a complete source executable or explicit uncertainty. They never substitute a library path. Searches, loads, symbols and closes remain distinct.
+- **I18 — fixed.** SQLite lock waits and high-level processor writes are bounded; storage failures roll back, count, and report without being presented as success. Actual SQLite full and busy paths are tested.
+- **I19 — fixed.** Failed initialization closes database connections; migrations and version markers roll back together. Retention defaults, explicit batch API and disk-full behavior are documented in [persistence.md](persistence.md).
+- **I24 — storage documentation reconciled.** Collector query examples and T05 policy/evidence now match the canonical tables. Full README, baseline, rule and CLI reconciliation remains T11.
