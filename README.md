@@ -725,7 +725,7 @@ and is documented as future work.
 **Setuid binaries ignore LD_AUDIT.**
 The Linux kernel strips all `LD_*` environment variables before executing a
 setuid binary. This means `sudo`, `su`, and similar binaries cannot be audited
-via this mechanism. This is actually a useful security finding — it also means
+via this mechanism. This is actually a useful security finding. It also means
 attackers cannot use LD_PRELOAD on these binaries either.
 
 **Baseline variance for plugin-heavy binaries.**
