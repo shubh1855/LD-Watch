@@ -31,13 +31,14 @@ static int ldw_find_cookie(uintptr_t *cookie)
 
 unsigned int la_objopen(struct link_map *map, Lmid_t lmid, uintptr_t *cookie)
 {
+    const char *object_name = map->l_name[0] ? map->l_name : "<main>";
     if (ldw_obj_count < MAX_OBJECTS)
     {
         ldw_obj_map[ldw_obj_count].cookie = cookie;
         ldw_obj_map[ldw_obj_count].namespace_id = (uint64_t)lmid;
         ldw_copy_field(ldw_obj_map[ldw_obj_count].name,
                        sizeof(ldw_obj_map[ldw_obj_count].name),
-                       map->l_name, NULL, 0);
+                       object_name, NULL, 0);
         ldw_obj_count++;
     }
     else
@@ -63,7 +64,7 @@ unsigned int la_objopen(struct link_map *map, Lmid_t lmid, uintptr_t *cookie)
     ev.namespace_id = (uint64_t)lmid;
     if (ldw_obj_count >= MAX_OBJECTS)
         ev.flags |= LDW_FLAG_OBJECT_UNRESOLVED;
-    ldw_copy_field(ev.so_path, sizeof(ev.so_path), map->l_name,
+    ldw_copy_field(ev.so_path, sizeof(ev.so_path), object_name,
                    &ev.flags, LDW_FLAG_SUBJECT_TRUNCATED);
     ldw_ipc_send(&ev);
     return LA_FLG_BINDFROM | LA_FLG_BINDTO;

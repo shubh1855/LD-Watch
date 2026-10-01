@@ -63,14 +63,14 @@ Owner: audit. Plans: F02, F03. Issues: I02, I05, I11, I12, I15, I17.
 
 Owner: collector. Plan: F04. Issues: I03, I04, I05, I10, I16, I17.
 
-- [ ] Decode and validate the T03 protocol; reject incompatible versions.
-- [ ] Validate configuration before creating resources.
-- [ ] Add safe socket ownership, active-instance protection and peer attribution.
-- [ ] Bound connection/resource use.
-- [ ] Implement active-connection tracking, cancellation and bounded shutdown.
-- [ ] Validate actual C-source records and idle-client shutdown.
+- [x] Decode and validate the T03 protocol; reject incompatible versions.
+- [x] Validate configuration before creating resources.
+- [x] Add safe socket ownership, active-instance protection and peer attribution.
+- [x] Bound connection/resource use.
+- [x] Implement active-connection tracking, cancellation and bounded shutdown.
+- [x] Validate actual C-source records and idle-client shutdown.
 
-**Gate:** Valid source records reach the processing boundary; invalid records are counted/rejected; shutdown is bounded. Persistence migration follows in T05.
+**Gate:** Passed 2026-10-01. The collector rejects legacy/invalid v1 packets, protects unrelated and active socket paths, captures peer credentials, bounds connections, closes idle clients within the drain deadline, and persists actual C-source load records. Persistence migration follows in T05.
 
 ## T05 — Implement schema, enrichment and persistence
 
@@ -206,6 +206,19 @@ Environment and toolchain: Linux local checkout; GCC and glibc loader audit inte
 Validation performed and result: C audit library built; controlled receiver validated magic/version/length/event/PID/TID over configured SOCK_SEQPACKET; audit suite passed 12/12 with verbose and endpoint checks.
 Affected issue IDs and disposition: I02 fixed in sender scope; I05 partially fixed at source identity/lifecycle; I11 fixed for truthful unknown origin; I12 fixed with close cleanup/capacity reporting; I15 fixed for sender endpoint override; I17 fixed at wire-source scope. Collector and cross-component compatibility remain T04.
 Remaining limitations: Concurrent stress, sustained-loss measurement, and collector decoding/peer policy remain T04/T09 evidence.
+Gate passed on: 2026-10-01
+```
+
+### T04 evidence record
+
+```text
+Task ID: T04
+Owner / reviewer: Collector / project owner
+Implementation reference: internal/proto/event.go, internal/socket/listener.go, cmd/collector/main.go, internal/collector/processor.go
+Environment and toolchain: Linux local checkout; Go 1.26.1, Unix SOCK_SEQPACKET, SQLite
+Validation performed and result: Full Go suite passed; socket tests cover unsafe paths, peer credentials, concurrent connections, and idle shutdown; actual C audit traffic persisted 4 load events through the Go collector; invalid/legacy packet decoding is unit-tested.
+Affected issue IDs and disposition: I03 fixed; I04 fixed in ingress scope; I05 remains partial pending T05 process-instance enrichment; I10 fixed; I16 fixed; I17 fixed at ingress/decode scope.
+Remaining limitations: Schema migration, durable lifecycle attribution, retention/health policy, and full sustained-load evidence remain T05/T09.
 Gate passed on: 2026-10-01
 ```
 

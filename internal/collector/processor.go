@@ -110,6 +110,11 @@ func (p *Processor) Process(ctx context.Context, ev *proto.Event) error {
 			Timestamp:    int64(ev.TimeStamNs),
 		})
 
+	case proto.EventObjectClose:
+		// Object lifecycle persistence is introduced with the T05 schema. The
+		// ingress path accepts the valid event now without misclassifying it.
+		return nil
+
 	default:
 		return fmt.Errorf("unknown event type %d from pid=%d", ev.EventType, ev.PID)
 	}

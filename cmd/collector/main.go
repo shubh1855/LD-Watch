@@ -23,6 +23,12 @@ var (
 
 func main() {
 	flag.Parse()
+	if *workers <= 0 {
+		log.Fatalf("[collector] workers must be positive (got %d)", *workers)
+	}
+	if err := socket.ValidatePath(*sockPath); err != nil {
+		log.Fatalf("[collector] validate socket path: %v", err)
+	}
 
 	if err := ensureParentDir(*dbPath); err != nil {
 		log.Fatalf("[collector] create db dir: %v", err)

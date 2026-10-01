@@ -6,7 +6,6 @@ package integration_test
 import (
 	"context"
 	"database/sql"
-	"encoding/binary"
 	"net"
 	"path/filepath"
 	"sync"
@@ -91,13 +90,13 @@ func (p *pipeline) close(t *testing.T) {
 // sendEvents dials sockPath, writes all events, then closes the connection.
 func sendEvents(t *testing.T, sockPath string, evs ...*proto.Event) {
 	t.Helper()
-	conn, err := net.Dial("unix", sockPath)
+	conn, err := net.Dial("unixpacket", sockPath)
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}
 	defer conn.Close()
 	for _, ev := range evs {
-		if err := binary.Write(conn, binary.LittleEndian, ev); err != nil {
+		if _, err := conn.Write(ev.MarshalBinary()); err != nil {
 			t.Fatalf("binary.Write: %v", err)
 		}
 	}
@@ -106,6 +105,7 @@ func sendEvents(t *testing.T, sockPath string, evs ...*proto.Event) {
 func makeSOEvent(pid uint32, soPath string, ts uint64) *proto.Event {
 	ev := &proto.Event{
 		PID:        pid,
+		TID:        pid,
 		EventType:  proto.EventSOLoad,
 		Mechanism:  proto.MechLDPreload,
 		TimeStamNs: ts,
@@ -117,11 +117,13 @@ func makeSOEvent(pid uint32, soPath string, ts uint64) *proto.Event {
 func makeSymbolEvent(pid uint32, soPath, sym string, addr, ts uint64) *proto.Event {
 	ev := &proto.Event{
 		PID:          pid,
+		TID:          pid,
 		EventType:    proto.EventSymBind,
 		ResolvedAddr: addr,
 		TimeStamNs:   ts,
 	}
 	copy(ev.SOPath[:], soPath)
+	copy(ev.RelatedPath[:], "requester")
 	copy(ev.Symbol[:], sym)
 	return ev
 }
@@ -193,6 +195,9 @@ func TestCollectorReceivesSOLoadEvent(t *testing.T) {
 	}
 	if got.Mechanism != proto.MechLDPreload {
 		t.Errorf("Mechanism: got %d, want %d (LD_PRELOAD)", got.Mechanism, proto.MechLDPreload)
+	}
+	if got.PeerPID <= 0 {
+		t.Errorf("PeerPID: got %d, want a positive credential", got.PeerPID)
 	}
 }
 

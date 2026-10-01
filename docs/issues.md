@@ -52,6 +52,15 @@ Read [fix plans](fixes.md) for remediation and [ordered pending tasks](pending-t
 - **I15 — fixed in sender scope.** `LDWATCH_SOCKET` supports an absolute endpoint override; collector policy remains T04.
 - **I17 — partially fixed.** The source now emits versioned, explicit little-endian records with lengths and truncation/degraded flags. Go decoding and incompatible-record rejection remain T04.
 
+## T04 dispositions (2026-10-01)
+
+- **I03 — fixed.** Listener shutdown stops accepting, drains briefly, closes idle/remaining connections, and closes the event channel once.
+- **I04 — fixed in ingress scope.** Socket paths are protected, access is `0660`, peer credentials are captured, and connections are bounded. Record trust and process attribution remain explicit contract limitations.
+- **I05 — partial.** The collector now receives peer/process/thread/lifetime metadata, but durable process-instance enrichment and PID reuse handling remain T05.
+- **I10 — fixed.** Existing paths are validated as sockets and active endpoints are rejected; unrelated files and symlinks are never removed.
+- **I16 — fixed.** Non-positive worker counts are rejected before database/socket resources are created.
+- **I17 — fixed at ingress scope.** Go decodes explicit v1 records, rejects legacy 408-byte packets and invalid flags/reserved bytes, and the real C-to-Go path has been exercised.
+
 ## Scope limitations, not automatically bugs
 
 - LD-Watch uses `LD_AUDIT` to observe selected dynamically linked programs. It does not currently monitor every program system-wide.

@@ -65,6 +65,10 @@ truncation flag. Transport neither resolves symlinks nor compares basenames.
 An empty `exe_path` is uncertain identity, not permission to substitute a
 library path or a later PID-only lookup.
 
+For the main executable, whose `la_objopen` name is empty, the audit source
+uses the literal subject sentinel `<main>`; the executable identity remains in
+`exe_path`.
+
 ### Event types
 
 | Value | Name | Subject | Related | Symbol |

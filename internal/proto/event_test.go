@@ -1,16 +1,30 @@
 package proto
 
-import (
-    "testing"
-    "unsafe"
-)
+import "testing"
 
-func TestEventSize(t *testing.T) {
-    var e Event
-    size := int(unsafe.Sizeof(e))
-    if size != EventSize {
-        t.Errorf("Event size mismatch: got %d bytes, expected %d bytes", size, EventSize)
-    } else {
-        t.Logf("PASS — proto.Event is %d bytes, matches C struct", size)
-    }
+func TestDecodeV1Record(t *testing.T) {
+	e := &Event{PID: 11, TID: 12, EventType: EventSOLoad, Mechanism: MechUnknown}
+	copy(e.SOPath[:], "/lib/libc.so.6")
+	decoded, err := Decode(e.MarshalBinary())
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if decoded.PID != e.PID || decoded.TID != e.TID || decoded.SOPathStr() != e.SOPathStr() {
+		t.Fatalf("decoded event does not preserve identity/path: %#v", decoded)
+	}
+}
+
+func TestDecodeRejectsLegacyRecord(t *testing.T) {
+	if _, err := Decode(make([]byte, 408)); err == nil {
+		t.Fatal("Decode accepted the legacy 408-byte record")
+	}
+}
+
+func TestDecodeRejectsInvalidReservedBytes(t *testing.T) {
+	e := &Event{PID: 11, TID: 12, EventType: EventSOLoad}
+	record := e.MarshalBinary()
+	record[52] = 1
+	if _, err := Decode(record); err == nil {
+		t.Fatal("Decode accepted non-zero reserved bytes")
+	}
 }
