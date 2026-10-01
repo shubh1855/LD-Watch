@@ -595,9 +595,10 @@ const upsertProcessInstance = `-- name: UpsertProcessInstance :exec
 INSERT INTO process_instances(process_key,pid,start_ticks,exe,identity_status,first_seen,last_seen)
 VALUES (?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(process_key) DO UPDATE SET
-first_seen=MIN(first_seen,excluded.first_seen), last_seen=MAX(last_seen,excluded.last_seen),
-exe=CASE WHEN excluded.exe != '' AND excluded.last_seen >= last_seen THEN excluded.exe ELSE exe END,
-identity_status=CASE WHEN excluded.exe != '' AND excluded.last_seen >= last_seen THEN excluded.identity_status ELSE identity_status END
+first_seen=CASE WHEN excluded.first_seen = 0 THEN first_seen WHEN first_seen = 0 THEN excluded.first_seen ELSE MIN(first_seen,excluded.first_seen) END,
+last_seen=CASE WHEN excluded.last_seen = 0 THEN last_seen WHEN last_seen = 0 THEN excluded.last_seen ELSE MAX(last_seen,excluded.last_seen) END,
+exe=CASE WHEN excluded.exe != '' AND excluded.last_seen > 0 AND excluded.last_seen >= last_seen THEN excluded.exe ELSE exe END,
+identity_status=CASE WHEN excluded.exe != '' AND excluded.last_seen > 0 AND excluded.last_seen >= last_seen THEN excluded.identity_status ELSE identity_status END
 `
 
 type UpsertProcessInstanceParams struct {

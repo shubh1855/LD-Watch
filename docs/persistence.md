@@ -3,13 +3,19 @@
 Implemented and locally verified on Linux, 2026-10-01. The collector's
 canonical telemetry source is now `loader_events`, with `process_instances` as
 its lifetime registry. `schema.sql` describes the final schema for sqlc;
-`migrations/001_legacy.sql` and `002_attribution.sql` are the runtime migrations.
+`migrations/001_legacy.sql`, `002_attribution.sql`, and
+`003_unknown_timestamps.sql` are the runtime migrations.
 
 ## Migration and compatibility
 
-Fresh and unversioned databases migrate transactionally to version 2. Version
+Fresh and unversioned databases migrate transactionally to version 3. Version
 markers are stored in `schema_migrations`; reruns do not duplicate imported
-rows. Newer schema versions are rejected. A migration failure rolls back both
+rows. Markers must form a contiguous sequence starting at version 1; gaps,
+duplicates, non-positive markers, and newer versions are rejected before any
+migrations are applied. Version 3 repairs process registry boundaries from
+positive event timestamps and rebuilds executable metadata from identified,
+timestamped observations. Historical event evidence is preserved.
+A migration failure rolls back both
 DDL and version markers, and failed store initialization closes its connection.
 
 Existing `so_events`, `symbol_events`, and PID-only `processes` remain archival
@@ -39,7 +45,11 @@ unresolved, preserving its raw string and flags. This survives short-lived
 process exit and avoids attributing an old record to a replacement executable.
 Executable path identity remains source-supplied evidence, as defined in T01.
 
-Process registry first/last seen values use event timestamps. The latest
+Process registry first/last seen values use positive event timestamps. Zero is
+an unknown sentinel until a timestamped event establishes each boundary; later
+zero-time events cannot change either boundary or select executable metadata.
+An instance observed only at unknown times retains an unresolved registry
+executable, while its events retain their individual source identities. The latest
 identified snapshot updates registry metadata; delayed earlier records cannot
 revert it. Historical events keep their own identity across executable
 replacement. Timestamp-zero records cannot establish time ordering.
@@ -102,6 +112,10 @@ selection. Ingress connection and queue limits remain the T04 policy.
 - `internal/collector/processor_test.go`: process lifetime/PID reuse,
   executable replacement, delayed records, searches and closes, unresolved
   instances, full-range namespace/address values, peer/TID metadata, and health.
+- `internal/store/ordering_test.go`: unknown times before, between, and after
+  timestamped events, all-unknown instances, repair of previously corrupt
+  registry values without altering event evidence, and rejection of sparse or
+  invalid migration history before schema changes.
 - `tests/integration/persistence_test.go`: builds the real audit library into
   an owned temporary directory, runs `/bin/true` with `LD_AUDIT`, and verifies
   actual C records persist through the socket and four collector workers with

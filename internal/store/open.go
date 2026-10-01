@@ -44,13 +44,34 @@ func Migrate(db *sql.DB) error {
 	if _, err = tx.ExecContext(ctx, "CREATE TABLE IF NOT EXISTS schema_migrations(version INTEGER PRIMARY KEY)"); err != nil {
 		return err
 	}
-	var version int
-	if err = tx.QueryRowContext(ctx, "SELECT COALESCE(MAX(version),0) FROM schema_migrations").Scan(&version); err != nil {
+	names := []string{"001_legacy.sql", "002_attribution.sql", "003_unknown_timestamps.sql"}
+	rows, err := tx.QueryContext(ctx, "SELECT version FROM schema_migrations ORDER BY version")
+	if err != nil {
 		return err
 	}
-	names := []string{"001_legacy.sql", "002_attribution.sql"}
-	if version > len(names) {
-		return fmt.Errorf("unsupported schema version %d", version)
+	version := 0
+	for rows.Next() {
+		var marker int
+		if err := rows.Scan(&marker); err != nil {
+			rows.Close()
+			return fmt.Errorf("invalid migration marker: %w", err)
+		}
+		if marker > len(names) {
+			rows.Close()
+			return fmt.Errorf("unsupported schema version %d", marker)
+		}
+		if marker != version+1 {
+			rows.Close()
+			return fmt.Errorf("invalid migration history: expected version %d, got %d", version+1, marker)
+		}
+		version = marker
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
+	if err := rows.Close(); err != nil {
+		return err
 	}
 	for i, name := range names {
 		if i+1 <= version {

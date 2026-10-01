@@ -79,9 +79,15 @@ func (q *Queries) PersistEvent(ctx context.Context, ev *proto.Event, exe, status
 	if ticks == 0 {
 		flags |= proto.FlagStartUnresolved
 	}
+	registryExe, registryStatus := exe, status
+	if timestamp == 0 {
+		// The event retains its source identity, but cannot select the registry's
+		// executable snapshot without a known observation time.
+		registryExe, registryStatus = "", "unresolved"
+	}
 	err = tq.UpsertProcessInstance(ctx, UpsertProcessInstanceParams{
-		ProcessKey: key, Pid: int64(ev.PID), StartTicks: strconv.FormatUint(ticks, 10), Exe: exe,
-		IdentityStatus: status, FirstSeen: int64(timestamp), LastSeen: int64(timestamp),
+		ProcessKey: key, Pid: int64(ev.PID), StartTicks: strconv.FormatUint(ticks, 10), Exe: registryExe,
+		IdentityStatus: registryStatus, FirstSeen: int64(timestamp), LastSeen: int64(timestamp),
 	})
 	if err != nil {
 		return err
