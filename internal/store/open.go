@@ -44,7 +44,7 @@ func Migrate(db *sql.DB) error {
 	if _, err = tx.ExecContext(ctx, "CREATE TABLE IF NOT EXISTS schema_migrations(version INTEGER PRIMARY KEY)"); err != nil {
 		return err
 	}
-	names := []string{"001_legacy.sql", "002_attribution.sql", "003_unknown_timestamps.sql"}
+	names := []string{"001_legacy.sql", "002_attribution.sql", "003_unknown_timestamps.sql", "004_baseline_selection.sql"}
 	rows, err := tx.QueryContext(ctx, "SELECT version FROM schema_migrations ORDER BY version")
 	if err != nil {
 		return err

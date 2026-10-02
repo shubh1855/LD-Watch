@@ -50,6 +50,33 @@ SELECT * FROM baseline_versions WHERE exe = ? AND environment_key = ? AND versio
 -- name: ListBaselineEntries :many
 SELECT * FROM baseline_entries WHERE baseline_id = ? ORDER BY entry_type,identity,symbol;
 
+-- name: ListBaselineCandidatePolicies :many
+SELECT exe,environment_key,entry_type,identity,symbol,optional FROM baseline_candidate_policies
+WHERE exe = ? AND environment_key = ? ORDER BY entry_type,identity,symbol;
+
+-- name: UpsertBaselineCandidatePolicy :exec
+INSERT INTO baseline_candidate_policies(exe,environment_key,entry_type,identity,symbol,optional)
+VALUES (?, ?, ?, ?, ?, ?)
+ON CONFLICT(exe,environment_key,entry_type,identity,symbol) DO UPDATE SET optional=excluded.optional;
+
+-- name: GetActiveBaseline :one
+SELECT v.id,v.exe,v.environment_key,v.version,v.approval_state,v.metadata
+FROM baseline_active a JOIN baseline_versions v ON v.id=a.baseline_id
+WHERE a.exe = ? AND a.environment_key = ? AND v.approval_state='approved';
+
+-- name: UpsertActiveBaseline :exec
+INSERT INTO baseline_active(exe,environment_key,baseline_id)
+SELECT exe,environment_key,id FROM baseline_versions
+WHERE exe = ? AND environment_key = ? AND version = ? AND approval_state='approved'
+ON CONFLICT(exe,environment_key) DO UPDATE SET baseline_id=excluded.baseline_id;
+
+-- name: GetLatestBaselineVersion :one
+SELECT COALESCE(MAX(version),0) FROM baseline_versions WHERE exe = ? AND environment_key = ?;
+
+-- name: InspectApprovedBaseline :one
+SELECT id,exe,environment_key,version,approval_state,metadata FROM baseline_versions
+WHERE exe = ? AND environment_key = ? AND version = ? AND approval_state='approved';
+
 -- name: InsertAlert :one
 INSERT INTO alerts(id,severity,rule,process_key,pid,exe,detail,timestamp,deduplication_key)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *;

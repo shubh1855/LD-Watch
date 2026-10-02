@@ -3,12 +3,13 @@
 Implemented and locally verified on Linux, 2026-10-01. The collector's
 canonical telemetry source is now `loader_events`, with `process_instances` as
 its lifetime registry. `schema.sql` describes the final schema for sqlc;
-`migrations/001_legacy.sql`, `002_attribution.sql`, and
-`003_unknown_timestamps.sql` are the runtime migrations.
+`migrations/001_legacy.sql`, `002_attribution.sql`,
+`003_unknown_timestamps.sql`, and `004_baseline_selection.sql` are the runtime
+migrations.
 
 ## Migration and compatibility
 
-Fresh and unversioned databases migrate transactionally to version 3. Version
+Fresh and unversioned databases migrate transactionally to version 4. Version
 markers are stored in `schema_migrations`; reruns do not duplicate imported
 rows. Markers must form a contiguous sequence starting at version 1; gaps,
 duplicates, non-positive markers, and newer versions are rejected before any
@@ -26,10 +27,12 @@ Old SO and symbol rows are additionally imported into `loader_events` with
 empty executable identity and unresolved lifetime flags. Old rows never become
 confirmed loads, candidates, approved baselines, or canonical alerts.
 
-The old profiler implementation is still T06 work. Its raw global observation
-API is not an approved-baseline API. T06 must use the new shared candidate,
-version, and entry queries. Approval workflows and alert evaluation remain
-T06/T07; this stage supplies their schema and storage interface.
+The old global profiler observations remain archival evidence and are never
+approved automatically. T06 uses the shared candidate, version, and entry
+queries over identified `loader_events`. Migration 004 adds durable learning
+cursors, candidate optionality, and selected-version state scoped by executable
+and explicit environment key. Approval freezes candidate entries into a numbered
+version; reload returns only the selected approved version.
 
 ## Identity and queries
 

@@ -76,7 +76,10 @@ func TestMigrationRepairsUnknownTimestampRegistry(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Reproduce registries left by the old zero-time MIN/MAX and metadata logic.
-	if _, err = s.db.Exec(`DELETE FROM schema_migrations WHERE version=3;
+	if _, err = s.db.Exec(`DROP TABLE baseline_candidate_policies;
+ DROP TABLE baseline_learning_cursors;
+ DROP TABLE baseline_active;
+ DELETE FROM schema_migrations WHERE version IN (3,4);
  UPDATE process_instances SET first_seen=0, exe='/bin/unknown', identity_status='source' WHERE pid=42;
  UPDATE process_instances SET exe='/bin/only-unknown', identity_status='source' WHERE pid=43;`); err != nil {
 		t.Fatal(err)
@@ -108,7 +111,7 @@ func TestMigrationRejectsInvalidHistory(t *testing.T) {
 	}{
 		{"missing first", []int{2}}, {"missing middle", []int{1, 3}},
 		{"zero", []int{0}}, {"negative", []int{-1}},
-		{"future", []int{1, 2, 3, 4}}, {"duplicate", []int{1, 1}},
+		{"future", []int{1, 2, 3, 4, 5}}, {"duplicate", []int{1, 1}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
