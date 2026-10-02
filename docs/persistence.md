@@ -34,6 +34,18 @@ cursors, candidate optionality, and selected-version state scoped by executable
 and explicit environment key. Approval freezes candidate entries into a numbered
 version; reload returns only the selected approved version.
 
+Symbol-provider learning uses `SYMBOL_BIND.subject_path` as the provider and
+`related_path` as the requester. Truncated provider, requester, or symbol fields
+and unresolved object attribution cannot train a candidate. Regression tests
+exercise decoded wire records through persistence, learning, approval, and reload.
+
+Profiles learned with the initial T06 implementation may contain requester paths
+as providers. This correction does not rewrite existing candidates or immutable
+approved versions. Re-profile retained telemetry under a new explicit environment
+label, inspect and approve the corrected candidate, then select that version.
+Retained telemetry must cover the intended profile; deleted observations cannot
+be recovered by re-profiling.
+
 ## Identity and queries
 
 Certain process keys are `pid:start_ticks`. Missing lifetime produces a unique
