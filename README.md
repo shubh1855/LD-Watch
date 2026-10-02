@@ -483,9 +483,25 @@ LD_AUDIT=$(pwd)/audit/audit.so curl https://example.com
 ### Running in baseline learn mode
 
 ```bash
-# Profile common system binaries (run once on a clean system)
-bash scripts/baseline.sh
+# Build a candidate profile from events already recorded by the collector
+./bin/ldwatch-cli baseline profile --exe /usr/bin/curl --environment-key production
+
+# Review the executable-scoped candidate, then approve and activate it
+./bin/ldwatch-cli baseline inspect --exe /usr/bin/curl --environment-key production
+./bin/ldwatch-cli baseline approve --exe /usr/bin/curl --environment-key production
+./bin/ldwatch-cli baseline use --exe /usr/bin/curl --environment-key production --version 1
 ```
+
+`profile` incrementally reads only complete, source-identified `LOAD` and
+`SYMBOL_BIND` records from the collector database (`/var/ldwatch/events.db` by
+default). Candidate observations are scoped by executable and the explicit
+environment label. Approval freezes a numbered version; `use` selects which
+approved version detection should reload. Pass `--library /absolute/path.so --optional`
+to `approve` to allow that exact load to be absent. Provider identity uses the
+canonical full path; a basename match alone is not accepted. Reloading
+without a selected approved version returns the explicit `MISSING_BASELINE`
+error. Learning after approval creates or extends candidate observations and
+cannot alter the approved version.
 
 ---
 

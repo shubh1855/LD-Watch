@@ -91,14 +91,37 @@ Owner: store + collector. Plan: F05. Issues: I05, I06, I07, I14, I18, I19, I24.
 
 Owner: engine/baseline. Plan: F06. Issues: I06, I07.
 
-- [ ] Implement executable-scoped candidate learning from confirmed events.
-- [ ] Implement inspection, approval, version selection and reload.
-- [ ] Implement expected-library and symbol-provider retrieval using shared identity rules.
-- [ ] Define and implement optional-library and missing-baseline policy.
-- [ ] Provide a profiling entry point without duplicating collector/store logic.
-- [ ] Verify cross-executable isolation and persistence across restart.
+- [x] Implement executable-scoped candidate learning from confirmed events.
+- [x] Implement inspection, approval, version selection and reload.
+- [x] Implement expected-library and symbol-provider retrieval using shared identity rules.
+- [x] Define and implement optional-library and missing-baseline policy.
+- [x] Provide a profiling entry point without duplicating collector/store logic.
+- [x] Verify cross-executable isolation and persistence across restart.
 
 **Gate:** Approved profiles can be retrieved deterministically; normal detection cannot change them.
+
+**Gate passed locally 2026-10-02.** Candidate learning consumes only complete,
+source-identified `LOAD` and `SYMBOL_BIND` rows through the shared store query
+layer, keyed by executable and explicit environment label. Version approval
+copies observations and optionality into immutable entries; a separate active
+selection controls reload. Missing selection returns `MISSING_BASELINE`.
+Focused baseline/store/CLI tests and the full Go suite passed, including
+cross-executable isolation, idempotent profiling, approved-profile immutability,
+and persistence across database restart. End-to-end detection and alert
+integration remain T07 work.
+
+### T06 evidence record
+
+```text
+Task ID: T06
+Owner / reviewer: Engine + baseline / implementation review pending
+Implementation reference: executable/environment scoped candidate, approval, selection, and reload APIs; baseline CLI profile/inspect/approve/use workflows
+Environment and toolchain: Linux local checkout; Go 1.26.1; SQLite migrations 001–004
+Validation performed and result: focused baseline/store/CLI tests passed; full Go suite passed including Unix-socket integration tests
+Affected issue IDs and disposition: I06 and I07 baseline learning/versioning behavior implemented; alert evaluation and canonical alert persistence remain T07
+Remaining limitations: T07 must connect the selected profile to normal rule evaluation and emit the canonical MISSING_BASELINE alert
+Gate passed on: 2026-10-02 (local acceptance)
+```
 
 ## T07 — Repair rules and connect alerts
 
