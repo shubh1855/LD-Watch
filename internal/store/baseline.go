@@ -43,7 +43,7 @@ func (q *Queries) LearnBaselineEvents(ctx context.Context, exe, environmentKey s
 	if err == sql.ErrNoRows {
 		cursor = 0
 	}
-	rows, err := tx.QueryContext(ctx, `SELECT id,event_type,subject_path,related_path,symbol FROM loader_events WHERE id>? AND exe=? AND identity_status='source' AND ((event_type='LOAD' AND (flags & ?)=0) OR (event_type='SYMBOL_BIND' AND (flags & ?)=0)) ORDER BY id`, cursor, exe, int64(proto.FlagSubjectTruncated|proto.FlagObjectUnresolved), int64(proto.FlagRelatedTruncated|proto.FlagSymbolTruncated|proto.FlagObjectUnresolved))
+	rows, err := tx.QueryContext(ctx, `SELECT id,event_type,subject_path,related_path,symbol FROM loader_events WHERE id>? AND exe=? AND identity_status='source' AND ((event_type='LOAD' AND (flags & ?)=0) OR (event_type='SYMBOL_BIND' AND (flags & ?)=0)) ORDER BY id`, cursor, exe, int64(proto.FlagSubjectTruncated|proto.FlagObjectUnresolved), int64(proto.FlagSubjectTruncated|proto.FlagSymbolTruncated|proto.FlagObjectUnresolved))
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func (q *Queries) LearnBaselineEvents(ctx context.Context, exe, environmentKey s
 			if o.related == "" || o.symbol == "" {
 				continue
 			}
-			kind, ident, symbol = "SYMBOL_PROVIDER", identity.Library(o.related), o.symbol
+			kind, ident, symbol = "SYMBOL_PROVIDER", identity.Library(o.subject), o.symbol
 		}
 		if ident == "" || (kind == "SYMBOL_PROVIDER" && symbol == "") {
 			continue

@@ -66,6 +66,13 @@ type AlertParams struct {
 // WriteAlert requires the canonical T01 fields. Legacy alert rows are archived
 // separately; arbitrary old rule names and plaintext detail are not promoted.
 func (s *Store) WriteAlert(ctx context.Context, p AlertParams) (Alert, error) {
+	a, _, err := s.Queries.PersistAlert(ctx, p)
+	return a, err
+}
+
+// PersistAlert inserts one canonical alert. Duplicate deduplication keys are
+// successful no-ops and return the existing row with inserted=false.
+func (q *Queries) PersistAlert(ctx context.Context, p AlertParams) (Alert, bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	if p.ID == "" {
@@ -73,21 +80,33 @@ func (s *Store) WriteAlert(ctx context.Context, p AlertParams) (Alert, error) {
 	}
 	id, err := uuid.Parse(p.ID)
 	if err != nil || id.String() != p.ID || id.Variant() != uuid.RFC4122 {
-		return Alert{}, fmt.Errorf("alert ID must be a lowercase RFC 4122 UUID")
+		return Alert{}, false, fmt.Errorf("alert ID must be a lowercase RFC 4122 UUID")
 	}
 	if p.ProcessKey == "" || p.DeduplicationKey == "" {
-		return Alert{}, fmt.Errorf("alert requires process and deduplication keys")
+		return Alert{}, false, fmt.Errorf("alert requires process and deduplication keys")
 	}
 	var detail map[string]json.RawMessage
 	if err := json.Unmarshal([]byte(p.Detail), &detail); err != nil {
-		return Alert{}, fmt.Errorf("alert detail: %w", err)
+		return Alert{}, false, fmt.Errorf("alert detail: %w", err)
 	}
 	for _, key := range []string{"event_type", "process_instance", "executable", "observed", "baseline", "origin", "flags"} {
 		if _, ok := detail[key]; !ok {
-			return Alert{}, fmt.Errorf("alert detail missing %s", key)
+			return Alert{}, false, fmt.Errorf("alert detail missing %s", key)
 		}
 	}
-	return s.InsertAlert(ctx, InsertAlertParams{ID: p.ID, Severity: p.Severity, Rule: p.Rule, ProcessKey: p.ProcessKey, Pid: int64(p.PID), Exe: p.Exe, Detail: p.Detail, Timestamp: p.TimestampNs, DeduplicationKey: p.DeduplicationKey})
+	res, err := q.db.ExecContext(ctx, `INSERT INTO alerts(id,severity,rule,process_key,pid,exe,detail,timestamp,deduplication_key) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(deduplication_key) DO NOTHING`, p.ID, p.Severity, p.Rule, p.ProcessKey, int64(p.PID), p.Exe, p.Detail, p.TimestampNs, p.DeduplicationKey)
+	if err != nil {
+		return Alert{}, false, err
+	}
+	changed, err := res.RowsAffected()
+	if err != nil {
+		return Alert{}, false, err
+	}
+	var a Alert
+	err = q.db.QueryRowContext(ctx, `SELECT id,severity,rule,process_key,pid,exe,detail,timestamp,deduplication_key FROM alerts WHERE deduplication_key=?`, p.DeduplicationKey).Scan(
+		&a.ID, &a.Severity, &a.Rule, &a.ProcessKey, &a.Pid, &a.Exe, &a.Detail, &a.Timestamp, &a.DeduplicationKey,
+	)
+	return a, changed == 1, err
 }
 func (s *Store) QueryAlerts(ctx context.Context, limit int64) ([]Alert, error) {
 	return s.ListAlerts(ctx, limit)

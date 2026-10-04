@@ -171,7 +171,10 @@ typedef struct {
 | UNKNOWN_SO           | SO not in baseline for this binary           | HIGH     |
 | PATH_HIJACK          | SO name matches baseline but path differs    | CRITICAL |
 | SYMBOL_INTERPOSITION | Critical symbol resolves outside expected SO | CRITICAL |
-| PRELOAD_PRIVILEGED   | LD_PRELOAD used on root/setuid binary        | CRITICAL |
+| MISSING_BASELINE     | No approved baseline selected for the executable | HIGH |
+
+`PRELOAD_PRIVILEGED` is deferred: current telemetry cannot prove preload
+origin and privilege context.
 
 ---
 
@@ -371,7 +374,7 @@ Examples:
 - [ ] Rule 1: UNKNOWN_SO fires correctly
 - [ ] Rule 2: PATH_HIJACK fires correctly
 - [ ] Rule 3: SYMBOL_INTERPOSITION fires correctly
-- [ ] Bonus rule: PRELOAD_PRIVILEGED fires on LD_PRELOAD + root process
+- [ ] `PRELOAD_PRIVILEGED` is deferred until trustworthy origin and privilege metadata are available
 - [ ] Alerts written to `alerts` table with correct severity and JSON detail
 
 **Phase 5 — CLI**
@@ -465,7 +468,7 @@ make test
 ### Step 1 — Start the collector daemon
 
 ```bash
-sudo ./bin/collector --db /var/ldwatch/events.db --socket /run/ldwatch/ldwatch.sock
+sudo ./bin/collector --db /var/ldwatch/events.db --socket /run/ldwatch/ldwatch.sock --environment production
 ```
 
 ### Step 2 — Run a program under LD-Watch
@@ -592,7 +595,8 @@ gcc -shared -fPIC -o evil.so evil.c -ldl
 LD_PRELOAD=./evil.so LD_AUDIT=../../../audit/audit.so ls
 ```
 
-**Expected alerts:** `UNKNOWN_SO` (HIGH) + `SYMBOL_INTERPOSITION` on `read()` (CRITICAL)
+This scenario is not currently an alert guarantee. Preload origin is not
+affirmatively reported by the audit source, and this rule is deferred.
 
 ---
 
