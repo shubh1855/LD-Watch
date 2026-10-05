@@ -140,15 +140,28 @@ Owner: engine + collector. Plan: F07. Issues: I01, I06, I08, I11, I21, I24.
 
 Owner: CLI. Plan: F08. Issues: I20, I24.
 
-- [ ] Add shared database configuration, validation, help and exit-code handling.
-- [ ] Implement `alerts` and severity filtering.
-- [ ] Implement approved baseline display.
-- [ ] Implement live event watching with a stable cursor and process-instance handling.
-- [ ] Implement `diff` with an explicit observation source.
-- [ ] Implement JSON report export and validated date filtering.
+- [x] Add shared database configuration, validation, help and exit-code handling.
+- [x] Implement `alerts` and severity filtering.
+- [x] Implement approved baseline display.
+- [x] Implement live event watching with a stable cursor and process-instance handling.
+- [x] Implement `diff` with an explicit observation source.
+- [x] Implement JSON report export and validated date filtering.
 - [ ] Validate against T07-produced data, including empty/error cases.
 
 **Gate:** All retained README command promises work without duplicating detection or identity logic.
+
+### T08 implementation evidence (gate pending)
+
+```text
+Task ID: T08
+Owner / reviewer: CLI / implementation review pending
+Implementation reference: cmd/ldwatch-cli/main.go; README.md CLI Reference
+Environment and toolchain: Linux local checkout; Go 1.26.1; SQLite migrations 001–004
+Validation performed and result: `GOCACHE=/tmp/ldwatch-t08-go-cache go test ./...` passed, including socket and integration suites when run with the required sandbox permission. CLI built successfully; empty alerts/report returned cleanly and invalid date input returned exit code 2. T07 is still pending, so T07-produced end-to-end alert fixtures are not available for acceptance.
+Affected issue IDs and disposition: I20 CLI workflows implemented; I24 documented workflow/validation dependency remains open until T07 data and cross-component review are available.
+Remaining limitations: Run CLI workflows against T07-produced persisted alerts and telemetry, including empty database, invalid filters/dates, and database errors; complete end-to-end gate after T07.
+Gate passed on: pending
+```
 
 ## T09 — Complete integration and performance evidence
 

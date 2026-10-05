@@ -637,21 +637,28 @@ ldwatch-cli alerts
 ldwatch-cli alerts --severity CRITICAL
 ldwatch-cli alerts --severity HIGH
 
-# Show baseline for a binary
-ldwatch-cli baseline --exe /bin/curl
-ldwatch-cli baseline --exe /usr/bin/sudo
+# Show an active approved baseline
+ldwatch-cli baseline show --exe /bin/curl --environment-key production
 
 # Stream live events for a process
 ldwatch-cli watch --pid 1234
 
-# Compare current SO load map vs baseline
-ldwatch-cli diff /usr/bin/ssh
-ldwatch-cli diff /bin/curl
+# Compare recorded LOAD observations with an active approved baseline
+ldwatch-cli diff --source events --exe /usr/bin/ssh --environment-key production
 
 # Export alert report
 ldwatch-cli report --output report.json
 ldwatch-cli report --output report.json --since 2025-01-01
+ldwatch-cli report --output report.json --since 2025-01-01 --until 2025-02-01
 ```
+
+All commands accept `--db PATH` (default `/var/ldwatch/events.db`). Alert severity
+filters accept `CRITICAL`, `HIGH`, `MEDIUM`, or `LOW`. Report dates accept
+`YYYY-MM-DD` or RFC3339 timestamps; `--since` is inclusive and `--until` is
+exclusive. `watch` prints each event's stable database row ID and process key;
+resume it with `--after ID`, and use `--pid` to filter a PID while retaining
+the process-instance key in output. `diff --source events` explicitly selects
+persisted loader observations as its comparison input.
 
 ---
 
