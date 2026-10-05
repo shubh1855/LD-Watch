@@ -157,9 +157,9 @@ Task ID: T08
 Owner / reviewer: CLI / implementation review pending
 Implementation reference: cmd/ldwatch-cli/main.go; README.md CLI Reference
 Environment and toolchain: Linux local checkout; Go 1.26.1; SQLite migrations 001–004
-Validation performed and result: `GOCACHE=/tmp/ldwatch-t08-go-cache go test ./...` passed, including socket and integration suites when run with the required sandbox permission. CLI built successfully; empty alerts/report returned cleanly and invalid date input returned exit code 2. T07 is still pending, so T07-produced end-to-end alert fixtures are not available for acceptance.
+Validation performed and result: `GOCACHE=/tmp/ldwatch-t08-go-cache go test ./...` passed, including socket and integration suites when run with the required sandbox permission. CLI tests cover empty databases, schema-valid persisted alert rows, severity filtering, JSON/date output, invalid filters/ranges, and database-open errors. CLI also built successfully. These alert rows are T07-schema fixtures, not output from the T07 pipeline. No T07 branch or T07-produced database is present, and T07 remains pending.
 Affected issue IDs and disposition: I20 CLI workflows implemented; I24 documented workflow/validation dependency remains open until T07 data and cross-component review are available.
-Remaining limitations: Run CLI workflows against T07-produced persisted alerts and telemetry, including empty database, invalid filters/dates, and database errors; complete end-to-end gate after T07.
+Remaining limitations: Run CLI workflows against T07-produced persisted alerts and telemetry, including empty database, invalid filters/dates, and database errors; complete end-to-end gate after T07. The current collector does not yet connect engine evaluation to canonical alert persistence.
 Gate passed on: pending
 ```
 
