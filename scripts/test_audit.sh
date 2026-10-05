@@ -36,7 +36,90 @@ fi
 info "audit.so ready."
 echo ""
 
+# â”€â”€ Test 0a: absent collector remains fail-open and bounded â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+info "Test 0a â€” audited application remains bounded when collector is absent"
+MISSING_SOCKET="$TEST_DIR/no-collector.sock"
+if timeout 3 env LDWATCH_SOCKET="$MISSING_SOCKET" LDWATCH_VERBOSE=0 \
+  LD_AUDIT="$AUDIT_LIB" /bin/true >/dev/null 2>&1; then
+  pass "application exited successfully with the collector absent"
+else
+  fail "application failed or blocked with the collector absent"
+fi
+echo ""
+
 # ── Build probe binary for symbind tests ──────────────────────────────────────
+info "Test 0b â€” bounded sends to a slow collector"
+LIFECYCLE_SO="$TEST_DIR/lifecycle.so"
+BACKPRESSURE_BIN="$TEST_DIR/backpressure-probe"
+SLOW_RECEIVER_BIN="$TEST_DIR/slow-receiver"
+if gcc -shared -fPIC -Wall -Wextra -O2 -o "$LIFECYCLE_SO" tests/fixtures/lifecycle_library.c && \
+  gcc -Wall -Wextra -O2 -o "$BACKPRESSURE_BIN" tests/fixtures/backpressure_probe.c -ldl && \
+  gcc -Wall -Wextra -O2 -o "$SLOW_RECEIVER_BIN" tests/fixtures/slow_receiver.c; then
+  SLOW_SOCKET="$TEST_DIR/slow.sock"
+  SLOW_READY="$TEST_DIR/slow.ready"
+  timeout 7 "$SLOW_RECEIVER_BIN" "$SLOW_SOCKET" "$SLOW_READY" >"$TEST_DIR/slow.out" 2>&1 &
+  SLOW_PID=$!
+  for _ in $(seq 1 100); do
+    [ -S "$SLOW_SOCKET" ] && break
+    sleep 0.01
+  done
+  if timeout 3 env LDWATCH_SOCKET="$SLOW_SOCKET" LDWATCH_VERBOSE=0 \
+    LD_AUDIT="$AUDIT_LIB" "$BACKPRESSURE_BIN" "$LIFECYCLE_SO" >/dev/null 2>&1 && \
+    [ -f "$SLOW_READY" ]; then
+    pass "application completed while receiver accepted but did not read telemetry"
+  else
+    fail "application blocked or slow receiver fixture did not accept a connection"
+  fi
+  kill "$SLOW_PID" 2>/dev/null || true
+  wait "$SLOW_PID" 2>/dev/null || true
+else
+  fail "could not build slow-collector fixtures"
+fi
+echo ""
+
+info "Test 0c â€” reconnect after collector restart"
+RESTART_PROBE="$TEST_DIR/restart-probe"
+WIRE_RECEIVER_BIN="$TEST_DIR/restart-receiver"
+if gcc -Wall -Wextra -O2 -o "$RESTART_PROBE" tests/fixtures/restart_probe.c -ldl && \
+  gcc -Wall -Wextra -O2 -o "$WIRE_RECEIVER_BIN" tests/fixtures/wire_receiver.c; then
+  RESTART_SOCKET="$TEST_DIR/restart.sock"
+  timeout 4 "$WIRE_RECEIVER_BIN" "$RESTART_SOCKET" >"$TEST_DIR/first-receiver.out" 2>&1 &
+  FIRST_RECEIVER_PID=$!
+  for _ in $(seq 1 100); do
+    [ -S "$RESTART_SOCKET" ] && break
+    sleep 0.01
+  done
+  LDWATCH_SOCKET="$RESTART_SOCKET" LDWATCH_VERBOSE=0 LD_AUDIT="$AUDIT_LIB" \
+    "$RESTART_PROBE" "$LIFECYCLE_SO" >/dev/null 2>&1 &
+  RESTART_PROBE_PID=$!
+  if wait "$FIRST_RECEIVER_PID"; then
+    for _ in $(seq 1 100); do
+      [ ! -S "$RESTART_SOCKET" ] && break
+      sleep 0.01
+    done
+    sleep 0.9
+    timeout 4 "$WIRE_RECEIVER_BIN" "$RESTART_SOCKET" >"$TEST_DIR/second-receiver.out" 2>&1 &
+    SECOND_RECEIVER_PID=$!
+    for _ in $(seq 1 100); do
+      [ -S "$RESTART_SOCKET" ] && break
+      sleep 0.01
+    done
+    if wait "$RESTART_PROBE_PID" && wait "$SECOND_RECEIVER_PID" && \
+      grep -q '^WIRE_OK ' "$TEST_DIR/second-receiver.out"; then
+      pass "same audited process reconnected and delivered to the restarted endpoint"
+    else
+      fail "sender did not reconnect: $(cat "$TEST_DIR/second-receiver.out")"
+    fi
+  else
+    kill "$RESTART_PROBE_PID" 2>/dev/null || true
+    wait "$RESTART_PROBE_PID" 2>/dev/null || true
+    fail "initial controlled receiver did not accept a record"
+  fi
+else
+  fail "could not build collector-restart fixtures"
+fi
+echo ""
+
 PROBE_SRC="tests/fixtures/probe.c"
 PROBE_BIN="$TEST_DIR/probe"
 
