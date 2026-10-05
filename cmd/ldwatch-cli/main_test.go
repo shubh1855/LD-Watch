@@ -9,8 +9,74 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/shubh1855/ld-watch/internal/collector"
+	"github.com/shubh1855/ld-watch/internal/proto"
 	"github.com/shubh1855/ld-watch/internal/store"
 )
+
+func TestCleanAndDeviationAlertsReachCLIReport(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "events.db")
+	db, err := store.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Migrate(db); err != nil {
+		t.Fatal(err)
+	}
+	q := store.New(db)
+	ctx := context.Background()
+
+	seed := reportLoadEvent("/usr/bin/report-fixture", "/lib/libc.so.6", 1)
+	if _, err := q.PersistEventWithIdentity(ctx, seed, "/usr/bin/report-fixture", "source"); err != nil {
+		t.Fatal(err)
+	}
+	if err := q.LearnBaselineEvents(ctx, "/usr/bin/report-fixture", "test"); err != nil {
+		t.Fatal(err)
+	}
+	version, err := q.ApproveBaseline(ctx, "/usr/bin/report-fixture", "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := q.SelectBaseline(ctx, "/usr/bin/report-fixture", "test", version.Version); err != nil {
+		t.Fatal(err)
+	}
+
+	processor := collector.NewProcessor(q, "test")
+	if err := processor.Process(ctx, reportLoadEvent("/usr/bin/report-fixture", "/lib/libc.so.6", 2)); err != nil {
+		t.Fatal(err)
+	}
+	if got := processor.Stats().AlertsPersisted; got != 0 {
+		t.Fatalf("clean baseline load persisted %d alerts, want 0", got)
+	}
+	if err := processor.Process(ctx, reportLoadEvent("/usr/bin/report-fixture", "/tmp/fixture-plugin.so", 3)); err != nil {
+		t.Fatal(err)
+	}
+	if got := processor.Stats().AlertsPersisted; got != 1 {
+		t.Fatalf("controlled deviation persisted %d alerts, want 1", got)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	out, code := invokeCLI("report", "--db", dbPath, "--output", "-")
+	if code != 0 {
+		t.Fatalf("report: exit=%d output=%q", code, out)
+	}
+	var alerts []store.Alert
+	if err := json.Unmarshal([]byte(out), &alerts); err != nil {
+		t.Fatalf("invalid report JSON: %v: %s", err, out)
+	}
+	if len(alerts) != 1 || alerts[0].Rule != "UNKNOWN_SO" || !strings.Contains(alerts[0].Detail, "/tmp/fixture-plugin.so") {
+		t.Fatalf("report should contain only the controlled deviation: %+v", alerts)
+	}
+}
+
+func reportLoadEvent(exe, so string, timestamp uint64) *proto.Event {
+	ev := &proto.Event{PID: 73, TID: 73, ProcessStartTicks: 900, TimestampNs: timestamp, EventType: proto.EventSOLoad}
+	copy(ev.ExePath[:], exe)
+	copy(ev.SOPath[:], so)
+	return ev
+}
 
 func TestAlertsReportAndErrorCases(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "events.db")

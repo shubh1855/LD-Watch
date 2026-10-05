@@ -8,6 +8,11 @@ Validation recorded 2026-10-05 on `feature/t09`.
   the Go `SOCK_SEQPACKET` listener, process identity persistence, invalid packet
   rejection, and threaded plugin load/unload/reload attribution.
 - `go vet ./...` passed.
+- `go test -race ./cmd/ldwatch-cli -run TestCleanAndDeviationAlertsReachCLIReport`
+  passed after T08 was merged. The test approves a fixture baseline, processes a
+  clean approved-library load and an unapproved-library deviation through the
+  collector processor, then checks the CLI JSON report contains exactly the
+  persisted `UNKNOWN_SO` alert and no clean-run alert.
 - `bash scripts/test_audit.sh` passed 15/15 checks. The script now checks that
   an audited process exits with an absent collector, completes while a connected
   receiver does not read, and reconnects to a restarted endpoint in the same
@@ -37,11 +42,8 @@ failed socket connection; it is not a general application-overhead estimate.
 The slow-receiver fixture verifies bounded application completion but does not
 measure the number of C-side drops. No universal no-loss claim is made.
 
-## Remaining T09 gate
+## T09 gate
 
-CLI report workflows belong to T08, which is still incomplete in the checklist.
-The existing T07 clean/deviation fixture verifies stored alerts, but T09 cannot
-verify those outcomes through CLI reports until T08 supplies that interface.
-Accordingly, these results cover T09's collector, protocol, lifecycle,
-failure-handling, migration, and workload-measurement checks; the overall T09
-gate remains open for the T08-dependent CLI report coverage.
+The CLI report integration check closes the remaining T08-dependent T09 item.
+The gate is recorded as passed locally; CI packaging, demo automation, and final
+documentation reconciliation remain T10/T11 work.

@@ -207,19 +207,18 @@ Owner: tests, with component owners. Plan: F10. Issue: I22; validates I01–I21.
 - [x] Cover absent/slow/restarted collector, idle shutdown and invalid records.
 - [x] Cover storage failures and migration/legacy-data behavior.
 - [x] Cover clean and harmless controlled deviation outcomes through stored alerts.
-- [ ] Cover those outcomes through CLI reports after T08 is complete.
+- [x] Cover those outcomes through CLI reports after T08 is complete.
 - [x] Measure workload-specific overhead, throughput and packet persistence with stated conditions.
 - [x] Record evidence and remaining limitations; avoid universal no-loss claims from small tests.
 
 **Implementation status (2026-10-05):** Integration and performance checks are
 recorded in [`t09-evidence.md`](t09-evidence.md). The full Go race suite, `go vet`,
-and Linux audit fixture passed. Benchmark results are scoped to the WSL/i5-12450H
-workload and do not claim a universal loss rate. T09 remains open for CLI report
-coverage, which depends on T08.
+Linux audit fixture, and clean/deviation CLI report test passed. Benchmark results
+are scoped to the WSL/i5-12450H workload and do not claim a universal loss rate.
 
-**Gate:** Partial. Component integration, lifecycle, failure-handling, and benchmark
-evidence are recorded. Finish the CLI report coverage after T08, then close the
-gate. Failures return to their owning stage rather than being patched in test wrappers.
+**Gate:** Passed locally on 2026-10-05. Component integration, lifecycle,
+failure-handling, benchmark, and CLI report evidence are recorded. Failures return
+to their owning stage rather than being patched in test wrappers.
 
 ## T10 — Enforce CI and package the demo
 
