@@ -175,15 +175,28 @@ zero detection failures, and zero unresolved identities.
 
 Owner: CLI. Plan: F08. Issues: I20, I24.
 
-- [ ] Add shared database configuration, validation, help and exit-code handling.
-- [ ] Implement `alerts` and severity filtering.
-- [ ] Implement approved baseline display.
-- [ ] Implement live event watching with a stable cursor and process-instance handling.
-- [ ] Implement `diff` with an explicit observation source.
-- [ ] Implement JSON report export and validated date filtering.
-- [ ] Validate against T07-produced data, including empty/error cases.
+- [x] Add shared database configuration, validation, help and exit-code handling.
+- [x] Implement `alerts` and severity filtering.
+- [x] Implement approved baseline display.
+- [x] Implement live event watching with a stable cursor and process-instance handling.
+- [x] Implement `diff` with an explicit observation source.
+- [x] Implement JSON report export and validated date filtering.
+- [x] Validate against T07-produced data, including empty/error cases.
 
-**Gate:** All retained README command promises work without duplicating detection or identity logic.
+**Gate:** Passed 2026-10-05. All retained README command promises work without duplicating detection or identity logic.
+
+### T08 implementation evidence
+
+```text
+Task ID: T08
+Owner / reviewer: CLI / implementation review
+Implementation reference: cmd/ldwatch-cli/main.go; cmd/ldwatch-cli/main_test.go; README.md CLI Reference
+Environment and toolchain: Linux local checkout; Go 1.26.1; SQLite migrations 001–005; merged T07 collector output
+Validation performed and result: `GOCACHE=/tmp/ldwatch-t08-cache go test -race ./...`, `go vet ./...`, and `git diff --check` passed. The CLI was built and run against the real T07-produced database: `alerts --severity HIGH` listed the persisted `MISSING_BASELINE` and `UNKNOWN_SO` alerts; `baseline show` displayed the selected `/usr/bin/true` production profile; `diff --source events` reported the harmless preloaded library as `UNEXPECTED`; `report` emitted valid JSON; and `watch --after 0` streamed stable event IDs and process keys. Empty database, invalid severity/date/range, and database-open error cases are covered by CLI tests.
+Affected issue IDs and disposition: I20 fixed with the complete CLI workflows; I24 CLI commands and validation evidence now match the merged T07 schema and pipeline.
+Remaining limitations: Sustained-load measurements, CI packaging, demo automation, and final documentation reconciliation remain T09–T11 work.
+Gate passed on: 2026-10-05
+```
 
 ## T09 — Complete integration and performance evidence
 
