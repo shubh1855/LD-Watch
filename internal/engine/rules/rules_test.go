@@ -46,7 +46,7 @@ func TestUnknownSORuleFiresForUnknownSO(t *testing.T) {
 }
 
 func TestPathHijackRuleFiresForWrongPath(t *testing.T) {
-	rule := &PathHijackRule{ExpectedPath: map[string]string{"libcrypto.so.3": "/usr/lib/libcrypto.so.3"}}
+	rule := &PathHijackRule{ExpectedPath: map[string]string{"/tmp/libcrypto.so.3": "/usr/lib/libcrypto.so.3"}}
 	alert := rule.Evaluate(makeSOEvent(2222, "/tmp/libcrypto.so.3"))
 	if alert == nil {
 		t.Fatal("expected alert for wrong library path")
@@ -71,8 +71,8 @@ func TestSymbolInterpositionRuleFiresForWrongSO(t *testing.T) {
 	if alert == nil {
 		t.Fatal("expected alert for symbol interposition")
 	}
-	if alert.Rule != "SYMBOL_INTERPOSE" {
-		t.Errorf("rule: got %q, want SYMBOL_INTERPOSE", alert.Rule)
+	if alert.Rule != "SYMBOL_INTERPOSITION" {
+		t.Errorf("rule: got %q, want SYMBOL_INTERPOSITION", alert.Rule)
 	}
 	if alert.Severity != engine.SeverityCritical {
 		t.Errorf("severity: got %q, want CRITICAL", alert.Severity)

@@ -131,7 +131,7 @@ CREATE TABLE baseline_candidate_policies (
 CREATE TABLE alerts (
     id TEXT PRIMARY KEY,
     severity TEXT NOT NULL CHECK(severity IN ('LOW','MEDIUM','HIGH','CRITICAL')),
-    rule TEXT NOT NULL CHECK(rule IN ('UNKNOWN_SO','PATH_HIJACK','SYMBOL_INTERPOSITION')),
+    rule TEXT NOT NULL CHECK(rule IN ('UNKNOWN_SO','PATH_HIJACK','SYMBOL_INTERPOSITION','MISSING_BASELINE')),
     process_key TEXT NOT NULL REFERENCES process_instances(process_key),
     pid INTEGER NOT NULL,
     exe TEXT NOT NULL,

@@ -118,8 +118,8 @@ Owner / reviewer: Engine + baseline / implementation review pending
 Implementation reference: executable/environment scoped candidate, approval, selection, and reload APIs; baseline CLI profile/inspect/approve/use workflows
 Environment and toolchain: Linux local checkout; Go 1.26.1; SQLite migrations 001–004
 Validation performed and result: focused baseline/store/CLI tests passed; full Go suite passed including Unix-socket integration tests
-Affected issue IDs and disposition: I06 and I07 baseline learning/versioning behavior implemented; alert evaluation and canonical alert persistence remain T07
-Remaining limitations: T07 must connect the selected profile to normal rule evaluation and emit the canonical MISSING_BASELINE alert
+Affected issue IDs and disposition: I06 and I07 baseline learning/versioning behavior implemented; alert evaluation and canonical alert persistence were T07 follow-up work
+Remaining limitations at T06 gate: detection had not yet connected the selected profile or emitted a canonical MISSING_BASELINE alert
 Gate passed on: 2026-10-02 (local acceptance)
 ```
 
@@ -133,6 +133,13 @@ Owner: engine + collector. Plan: F07. Issues: I01, I06, I08, I11, I21, I24.
 - [ ] Implement explicit missing-baseline, duplicate-alert and error behavior.
 - [ ] Implement privileged-preload detection only if approved in T01 and supported by verified metadata; otherwise record its deferral and remove unsupported promises.
 - [ ] Verify clean and harmless deviation fixtures through the full pipeline.
+
+**Implementation status (2026-10-04):** Work is in progress on branch `T07`.
+The collector now evaluates confirmed loads and symbol bindings against the
+selected executable/environment baseline, persists canonical JSON alerts, and
+counts duplicate, missing-profile, and evaluation outcomes. The store schema
+adds `MISSING_BASELINE`; `PRELOAD_PRIVILEGED` remains deferred by T01. T07 stays
+open until clean/deviation full-pipeline evidence is recorded on Linux.
 
 **Gate:** Real telemetry produces expected stored alerts with correct executable identity and canonical fields. A clean approved run remains clean.
 
