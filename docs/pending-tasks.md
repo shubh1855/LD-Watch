@@ -181,21 +181,21 @@ Owner: CLI. Plan: F08. Issues: I20, I24.
 - [x] Implement live event watching with a stable cursor and process-instance handling.
 - [x] Implement `diff` with an explicit observation source.
 - [x] Implement JSON report export and validated date filtering.
-- [ ] Validate against T07-produced data, including empty/error cases.
+- [x] Validate against T07-produced data, including empty/error cases.
 
-**Gate:** All retained README command promises work without duplicating detection or identity logic.
+**Gate:** Passed 2026-10-05. All retained README command promises work without duplicating detection or identity logic.
 
-### T08 implementation evidence (gate pending)
+### T08 implementation evidence
 
 ```text
 Task ID: T08
-Owner / reviewer: CLI / implementation review pending
-Implementation reference: cmd/ldwatch-cli/main.go; README.md CLI Reference
-Environment and toolchain: Linux local checkout; Go 1.26.1; SQLite migrations 001–004
-Validation performed and result: `GOCACHE=/tmp/ldwatch-t08-go-cache go test ./...` passed, including socket and integration suites when run with the required sandbox permission. CLI tests cover empty databases, schema-valid persisted alert rows, severity filtering, JSON/date output, invalid filters/ranges, and database-open errors. CLI also built successfully. These alert rows are T07-schema fixtures, not output from the T07 pipeline. No T07 branch or T07-produced database is present, and T07 remains pending.
-Affected issue IDs and disposition: I20 CLI workflows implemented; I24 documented workflow/validation dependency remains open until T07 data and cross-component review are available.
-Remaining limitations: Run CLI workflows against T07-produced persisted alerts and telemetry, including empty database, invalid filters/dates, and database errors; complete end-to-end gate after T07. The current collector does not yet connect engine evaluation to canonical alert persistence.
-Gate passed on: pending
+Owner / reviewer: CLI / implementation review
+Implementation reference: cmd/ldwatch-cli/main.go; cmd/ldwatch-cli/main_test.go; README.md CLI Reference
+Environment and toolchain: Linux local checkout; Go 1.26.1; SQLite migrations 001–005; merged T07 collector output
+Validation performed and result: `GOCACHE=/tmp/ldwatch-t08-cache go test -race ./...`, `go vet ./...`, and `git diff --check` passed. The CLI was built and run against the real T07-produced database: `alerts --severity HIGH` listed the persisted `MISSING_BASELINE` and `UNKNOWN_SO` alerts; `baseline show` displayed the selected `/usr/bin/true` production profile; `diff --source events` reported the harmless preloaded library as `UNEXPECTED`; `report` emitted valid JSON; and `watch --after 0` streamed stable event IDs and process keys. Empty database, invalid severity/date/range, and database-open error cases are covered by CLI tests.
+Affected issue IDs and disposition: I20 fixed with the complete CLI workflows; I24 CLI commands and validation evidence now match the merged T07 schema and pipeline.
+Remaining limitations: Sustained-load measurements, CI packaging, demo automation, and final documentation reconciliation remain T09–T11 work.
+Gate passed on: 2026-10-05
 ```
 
 ## T09 — Complete integration and performance evidence
