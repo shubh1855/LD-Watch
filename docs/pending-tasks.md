@@ -118,8 +118,8 @@ Owner / reviewer: Engine + baseline / implementation review pending
 Implementation reference: executable/environment scoped candidate, approval, selection, and reload APIs; baseline CLI profile/inspect/approve/use workflows
 Environment and toolchain: Linux local checkout; Go 1.26.1; SQLite migrations 001–004
 Validation performed and result: focused baseline/store/CLI tests passed; full Go suite passed including Unix-socket integration tests
-Affected issue IDs and disposition: I06 and I07 baseline learning/versioning behavior implemented; alert evaluation and canonical alert persistence were T07 follow-up work
-Remaining limitations at T06 gate: detection had not yet connected the selected profile or emitted a canonical MISSING_BASELINE alert
+Affected issue IDs and disposition: I06 and I07 baseline learning/versioning behavior implemented; alert evaluation and canonical alert persistence completed in T07
+Remaining limitations at T06 gate: detection and alert integration were deferred to T07 and are now merged
 Gate passed on: 2026-10-02 (local acceptance)
 ```
 
@@ -127,19 +127,36 @@ Gate passed on: 2026-10-02 (local acceptance)
 
 Owner: engine + collector. Plan: F07. Issues: I01, I06, I08, I11, I21, I24.
 
-- [ ] Restrict loaded-library deviation checks to confirmed loads.
-- [ ] Use approved executable-specific baselines and verified provider identity.
-- [ ] Connect enriched events to rule evaluation and JSON alert persistence.
-- [ ] Implement explicit missing-baseline, duplicate-alert and error behavior.
-- [ ] Implement privileged-preload detection only if approved in T01 and supported by verified metadata; otherwise record its deferral and remove unsupported promises.
+- [x] Restrict loaded-library deviation checks to confirmed loads.
+- [x] Use approved executable-specific baselines and verified provider identity.
+- [x] Connect enriched events to rule evaluation and JSON alert persistence.
+- [x] Implement explicit missing-baseline, duplicate-alert and error behavior.
+- [x] Record the `PRELOAD_PRIVILEGED` deferral because current telemetry cannot prove preload origin and privilege context.
 - [ ] Verify clean and harmless deviation fixtures through the full pipeline.
 
-**Implementation status (2026-10-04):** Work is in progress on branch `T07`.
-The collector now evaluates confirmed loads and symbol bindings against the
-selected executable/environment baseline, persists canonical JSON alerts, and
-counts duplicate, missing-profile, and evaluation outcomes. The store schema
-adds `MISSING_BASELINE`; `PRELOAD_PRIVILEGED` remains deferred by T01. T07 stays
-open until clean/deviation full-pipeline evidence is recorded on Linux.
+**Implementation status (2026-10-05):** Merged to `main` in PR #59.
+The collector evaluates confirmed loads and symbol bindings against the selected
+executable/environment baseline, persists canonical JSON alerts, and counts
+duplicate, missing-profile, persistence, and evaluation outcomes. The store
+schema includes `MISSING_BASELINE`; `PRELOAD_PRIVILEGED` is explicitly deferred
+because current telemetry cannot prove its origin and privilege context.
+Focused tests cover clean approved-baseline evaluation, unknown libraries,
+missing baselines, duplicate alerts, provider identity, and incomplete records.
+T07 remains open only for clean/deviation evidence through the full C-to-Go
+pipeline on Linux.
+
+### T07 evidence record
+
+```text
+Task ID: T07
+Owner / reviewer: Engine + collector / implementation review
+Implementation reference: PR #59; internal/collector/processor.go; internal/engine/rules; internal/store/baseline.go; internal/store/sqlite.go; migration 005; docs/contract.md
+Environment and toolchain: Linux, Go 1.26.1, SQLite, GCC/glibc integration fixtures
+Validation performed and result: go test -race ./..., go vet ./..., and git diff --check passed on the merged branch. Focused tests cover approved-baseline clean evaluation, UNKNOWN_SO and MISSING_BASELINE persistence, duplicate-alert idempotency, provider/requester orientation, truncation filtering, migration history, and real collector integration.
+Affected issue IDs and disposition: I01 implemented for connected collector evaluation; I06/I07 implemented for selected executable/environment baselines and provider identity; I08 fixed by canonical path comparison; I11 remains limited to truthful UNKNOWN origin; I21 deferred because PRELOAD_PRIVILEGED evidence is unavailable; I24 updated for T07 behavior.
+Remaining limitations: Full clean/deviation C-to-Go alert evidence, CLI alert/report workflows, sustained-load measurements, and final documentation reconciliation remain T08–T11 work.
+Gate status: Implementation merged; full T07 acceptance gate remains open pending Linux end-to-end evidence.
+```
 
 **Gate:** Real telemetry produces expected stored alerts with correct executable identity and canonical fields. A clean approved run remains clean.
 
