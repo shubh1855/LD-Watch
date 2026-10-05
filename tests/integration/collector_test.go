@@ -30,7 +30,7 @@ type pipeline struct {
 	wg       sync.WaitGroup
 }
 
-func newPipeline(t *testing.T, numWorkers int) *pipeline {
+func newPipeline(t testing.TB, numWorkers int) *pipeline {
 	t.Helper()
 
 	sockPath := filepath.Join(t.TempDir(), "ldwatch-test.sock")
@@ -73,14 +73,14 @@ func newPipeline(t *testing.T, numWorkers int) *pipeline {
 // drain stops the listener (which closes Events after all handleConn goroutines
 // finish), then waits for all workers to exit their range loops.
 // Call this after all senders are done to get a consistent DB snapshot.
-func (p *pipeline) drain(t *testing.T) {
+func (p *pipeline) drain(t testing.TB) {
 	t.Helper()
 	p.ln.Stop()
 	p.wg.Wait()
 }
 
 // close releases the DB. Call after assertions are done.
-func (p *pipeline) close(t *testing.T) {
+func (p *pipeline) close(t testing.TB) {
 	t.Helper()
 	if err := p.db.Close(); err != nil {
 		t.Errorf("db.Close: %v", err)
@@ -88,7 +88,7 @@ func (p *pipeline) close(t *testing.T) {
 }
 
 // sendEvents dials sockPath, writes all events, then closes the connection.
-func sendEvents(t *testing.T, sockPath string, evs ...*proto.Event) {
+func sendEvents(t testing.TB, sockPath string, evs ...*proto.Event) {
 	t.Helper()
 	conn, err := net.Dial("unixpacket", sockPath)
 	if err != nil {
