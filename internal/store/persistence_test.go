@@ -172,8 +172,8 @@ func TestCanonicalAlertsAndBaselines(t *testing.T) {
 	if err != nil || alert.ID == "" {
 		t.Fatalf("insert alert: %v", err)
 	}
-	if _, err = s.WriteAlert(ctx, p); err == nil {
-		t.Fatal("duplicate alert accepted")
+	if _, err = s.WriteAlert(ctx, p); err != nil {
+		t.Fatalf("duplicate alert should be an idempotent no-op: %v", err)
 	}
 	rows, err := s.QueryAlertsBySeverity(ctx, "HIGH", 10)
 	if err != nil || len(rows) != 1 {

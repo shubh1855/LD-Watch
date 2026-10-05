@@ -19,7 +19,8 @@ import (
 var (
 	dbPath   = flag.String("db", "/var/ldwatch/events.db", "SQLite DB path")
 	sockPath = flag.String("socket", "/run/ldwatch/ldwatch.sock", "Unix socket path")
-	workers  = flag.Int("workers", 4, "Event processor goroutines")
+	workers     = flag.Int("workers", 4, "Event processor goroutines")
+	environment = flag.String("environment", "default", "approved baseline environment key")
 )
 
 func main() {
@@ -32,6 +33,9 @@ func main() {
 func run() error {
 	if *workers <= 0 {
 		return fmt.Errorf("workers must be positive (got %d)", *workers)
+	}
+	if *environment == "" {
+		return fmt.Errorf("environment baseline key must not be empty")
 	}
 	if err := socket.ValidatePath(*sockPath); err != nil {
 		return fmt.Errorf("validate socket path: %w", err)
@@ -67,7 +71,7 @@ func run() error {
 	}()
 
 	ctx := context.Background()
-	processor := collector.NewProcessor(db.Queries)
+	processor := collector.NewProcessor(db.Queries, *environment)
 
 	var wg sync.WaitGroup
 	for i := 0; i < *workers; i++ {
@@ -76,9 +80,10 @@ func run() error {
 			defer wg.Done()
 			for ev := range ln.Events {
 				if err := processor.Process(ctx, ev); err != nil {
-					failures := processor.Stats().PersistenceFailures
+					stats := processor.Stats()
+					failures := stats.PersistenceFailures + stats.DetectionFailures
 					if failures <= 5 || failures%100 == 0 {
-						log.Printf("[collector] persistence failures=%d: %v", failures, err)
+						log.Printf("[collector] processing failures=%d (persistence=%d detection=%d): %v", failures, stats.PersistenceFailures, stats.DetectionFailures, err)
 					}
 				}
 			}

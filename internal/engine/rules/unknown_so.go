@@ -2,10 +2,11 @@ package rules
 
 import (
 	"github.com/shubh1855/ld-watch/internal/engine"
+	"github.com/shubh1855/ld-watch/internal/identity"
 	"github.com/shubh1855/ld-watch/internal/proto"
 )
 
-// UnknownSORule alerts when an SO load/search is absent from the known baseline.
+// UnknownSORule alerts when a confirmed library load is absent from the baseline.
 type UnknownSORule struct {
 	KnownSO map[string]bool
 }
@@ -13,12 +14,12 @@ type UnknownSORule struct {
 func (r *UnknownSORule) Name() string { return "UNKNOWN_SO" }
 
 func (r *UnknownSORule) Evaluate(ev *proto.Event) *engine.Alert {
-	if ev.EventType != proto.EventSOLoad && ev.EventType != proto.EventSOSearch {
+	if ev == nil || ev.EventType != proto.EventSOLoad {
 		return nil
 	}
 
 	soPath := ev.SOPathStr()
-	if soPath == "" || r.KnownSO[soPath] {
+	if soPath == "" || r.KnownSO[identity.Library(soPath)] {
 		return nil
 	}
 

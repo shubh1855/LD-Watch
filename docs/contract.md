@@ -177,7 +177,9 @@ fabricated clean result.
 
 ## Alerts and implementation handoff
 
-Canonical rules are `UNKNOWN_SO`, `PATH_HIJACK`, and `SYMBOL_INTERPOSITION`.
+Canonical rules are `UNKNOWN_SO`, `PATH_HIJACK`, `SYMBOL_INTERPOSITION`, and
+`MISSING_BASELINE`. The last is a coverage alert and means the event could not
+be evaluated against an approved profile; it is never a clean result.
 `PRELOAD_PRIVILEGED` is deferred until affirmative preload and privilege
 evidence exists. Severities are uppercase `LOW`, `MEDIUM`, `HIGH`, and
 `CRITICAL`. Alert IDs are lowercase RFC 4122 UUIDs; timestamps are Unix

@@ -102,3 +102,72 @@ func TestTruncationRemainsUncertain(t *testing.T) {
 		}
 	}
 }
+
+func TestProcessorPersistsMissingBaselineAlert(t *testing.T) {
+	s, err := store.NewStore(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+
+	ev := detectionEvent("/bin/app", "/tmp/unapproved.so", 10)
+	p := NewProcessor(s.Queries, "production")
+	if err := p.Process(context.Background(), ev); err != nil {
+		t.Fatal(err)
+	}
+	alerts, err := s.QueryAlerts(context.Background(), 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(alerts) != 1 || alerts[0].Rule != "MISSING_BASELINE" || p.Stats().MissingBaselines != 1 {
+		t.Fatalf("missing-baseline result: alerts=%+v stats=%+v", alerts, p.Stats())
+	}
+}
+
+func TestProcessorEvaluatesApprovedBaseline(t *testing.T) {
+	s, err := store.NewStore(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	ctx := context.Background()
+
+	seed := detectionEvent("/bin/app", "/lib/libc.so.6", 10)
+	if err := s.PersistEvent(ctx, seed, "/bin/app", "source"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.LearnBaselineEvents(ctx, "/bin/app", "production"); err != nil {
+		t.Fatal(err)
+	}
+	version, err := s.ApproveBaseline(ctx, "/bin/app", "production")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SelectBaseline(ctx, "/bin/app", "production", version.Version); err != nil {
+		t.Fatal(err)
+	}
+
+	p := NewProcessor(s.Queries, "production")
+	known := detectionEvent("/bin/app", "/lib/libc.so.6", 20)
+	if err := p.Process(ctx, known); err != nil {
+		t.Fatal(err)
+	}
+	unknown := detectionEvent("/bin/app", "/tmp/evil.so", 30)
+	if err := p.Process(ctx, unknown); err != nil {
+		t.Fatal(err)
+	}
+	alerts, err := s.QueryAlerts(ctx, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(alerts) != 1 || alerts[0].Rule != "UNKNOWN_SO" || p.Stats().AlertsPersisted != 1 {
+		t.Fatalf("approved-baseline result: alerts=%+v stats=%+v", alerts, p.Stats())
+	}
+}
+
+func detectionEvent(exe, so string, timestamp uint64) *proto.Event {
+	ev := &proto.Event{PID: 7, TID: 7, ProcessStartTicks: 1, TimestampNs: timestamp, EventType: proto.EventSOLoad}
+	copy(ev.ExePath[:], exe)
+	copy(ev.SOPath[:], so)
+	return ev
+}

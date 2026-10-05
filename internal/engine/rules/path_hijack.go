@@ -2,6 +2,7 @@ package rules
 
 import (
 	"github.com/shubh1855/ld-watch/internal/engine"
+	"github.com/shubh1855/ld-watch/internal/identity"
 	"github.com/shubh1855/ld-watch/internal/proto"
 )
 
@@ -13,13 +14,13 @@ type PathHijackRule struct {
 func (r *PathHijackRule) Name() string { return "PATH_HIJACK" }
 
 func (r *PathHijackRule) Evaluate(ev *proto.Event) *engine.Alert {
-	if ev.EventType != proto.EventSOLoad && ev.EventType != proto.EventSOSearch {
+	if ev == nil || ev.EventType != proto.EventSOLoad {
 		return nil
 	}
 
 	actual := ev.SOPathStr()
-	expected := r.ExpectedPath[baseName(actual)]
-	if expected == "" || expected == actual {
+	expected := r.ExpectedPath[identity.Library(actual)]
+	if expected == "" || identity.SameLibrary(expected, actual) {
 		return nil
 	}
 
