@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/shubh1855/ld-watch/internal/proto"
 	"github.com/shubh1855/ld-watch/internal/store"
 )
 
@@ -121,5 +122,82 @@ func TestProfilesAreScopedApprovedSelectedAndPersistent(t *testing.T) {
 	}
 	if len(candidate.Libraries) != 2 {
 		t.Fatalf("expected a separate candidate for post-approval observations, got %#v", candidate.Libraries)
+	}
+}
+
+func TestSymbolLearningUsesCompleteWireProvider(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		flags uint16
+		want  int
+	}{
+		{"complete binding", 0, 1},
+		{"truncated provider", proto.FlagSubjectTruncated, 0},
+		{"truncated requester", proto.FlagRelatedTruncated, 0},
+		{"truncated symbol", proto.FlagSymbolTruncated, 0},
+		{"unresolved object", proto.FlagObjectUnresolved, 0},
+		{"truncated executable", proto.FlagExeTruncated, 0},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			db, err := store.Open(":memory:")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer db.Close()
+			if err := store.Migrate(db); err != nil {
+				t.Fatal(err)
+			}
+			ctx := context.Background()
+			ev := &proto.Event{PID: 42, TID: 43, ProcessStartTicks: 100, TimestampNs: 10, EventType: proto.EventSymBind, ResolvedAddr: 123, Flags: tt.flags}
+			copy(ev.ExePath[:], "/usr/bin/alpha")
+			// Match the C source and wire contract: subject is the provider,
+			// related is the requester.
+			copy(ev.SOPath[:], "/lib/libc.so.6")
+			copy(ev.RelatedPath[:], "/lib/requester.so")
+			copy(ev.Symbol[:], "open")
+			decoded, err := proto.Decode(ev.MarshalBinary())
+			if err != nil {
+				t.Fatal(err)
+			}
+			q := store.New(db)
+			exe, status := store.SourceExecutable(decoded)
+			if err := q.PersistEvent(ctx, decoded, exe, status); err != nil {
+				t.Fatal(err)
+			}
+			p := New(db)
+			// Repeated learning must not double-count an accepted binding.
+			for i := 0; i < 2; i++ {
+				if err := p.ProfileExecutable(ctx, "/usr/bin/alpha", "production"); err != nil {
+					t.Fatal(err)
+				}
+			}
+			rows, err := q.ListBaselineCandidates(ctx, store.ListBaselineCandidatesParams{Exe: "/usr/bin/alpha", EnvironmentKey: "production"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(rows) != tt.want {
+				t.Fatalf("candidate count = %d, want %d: %#v", len(rows), tt.want, rows)
+			}
+			if tt.want == 0 {
+				return
+			}
+			if rows[0].Identity != "/lib/libc.so.6" || rows[0].Symbol != "open" || rows[0].ObservationCount != 1 {
+				t.Fatalf("incorrect learned binding: %#v", rows[0])
+			}
+			version, err := p.Approve(ctx, "/usr/bin/alpha", "production")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := p.Activate(ctx, "/usr/bin/alpha", "production", version); err != nil {
+				t.Fatal(err)
+			}
+			active, err := p.Reload(ctx, "/usr/bin/alpha", "production")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := active.DetectionPolicy().ExpectedSO["open"]; got != "/lib/libc.so.6" {
+				t.Fatalf("approved provider = %q, want /lib/libc.so.6", got)
+			}
+		})
 	}
 }
