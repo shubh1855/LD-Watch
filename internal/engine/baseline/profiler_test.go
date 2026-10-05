@@ -29,7 +29,7 @@ func TestProfilesAreScopedApprovedSelectedAndPersistent(t *testing.T) {
 		}
 	}
 	seed("1:1", "/usr/bin/alpha", "LOAD", "/lib/libalpha.so", "", "", "source", 10)
-	seed("1:1", "/usr/bin/alpha", "SYMBOL_BIND", "/lib/requester.so", "/lib/libc.so.6", "open", "source", 11)
+	seed("1:1", "/usr/bin/alpha", "SYMBOL_BIND", "/lib/libc.so.6", "/lib/requester.so", "open", "source", 11)
 	seed("1:1", "/usr/bin/alpha", "SEARCH", "/tmp/unconfirmed.so", "", "", "source", 12)
 	seed("2:1", "/usr/bin/beta", "LOAD", "/lib/libbeta.so", "", "", "source", 13)
 	seed("3:1", "/usr/bin/alpha", "LOAD", "/tmp/legacy.so", "", "", "legacy", 14)
