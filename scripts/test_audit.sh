@@ -36,8 +36,8 @@ fi
 info "audit.so ready."
 echo ""
 
-# â”€â”€ Test 0a: absent collector remains fail-open and bounded â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-info "Test 0a â€” audited application remains bounded when collector is absent"
+# Test 0a: absent collector remains fail-open and bounded
+info "Test 0a - audited application remains bounded when collector is absent"
 MISSING_SOCKET="$TEST_DIR/no-collector.sock"
 if timeout 3 env LDWATCH_SOCKET="$MISSING_SOCKET" LDWATCH_VERBOSE=0 \
   LD_AUDIT="$AUDIT_LIB" /bin/true >/dev/null 2>&1; then
@@ -48,7 +48,7 @@ fi
 echo ""
 
 # ── Build probe binary for symbind tests ──────────────────────────────────────
-info "Test 0b â€” bounded sends to a slow collector"
+info "Test 0b - bounded sends to a slow collector"
 LIFECYCLE_SO="$TEST_DIR/lifecycle.so"
 BACKPRESSURE_BIN="$TEST_DIR/backpressure-probe"
 SLOW_RECEIVER_BIN="$TEST_DIR/slow-receiver"
@@ -77,7 +77,7 @@ else
 fi
 echo ""
 
-info "Test 0c â€” reconnect after collector restart"
+info "Test 0c - reconnect after collector restart"
 RESTART_PROBE="$TEST_DIR/restart-probe"
 WIRE_RECEIVER_BIN="$TEST_DIR/restart-receiver"
 if gcc -Wall -Wextra -O2 -o "$RESTART_PROBE" tests/fixtures/restart_probe.c -ldl && \
