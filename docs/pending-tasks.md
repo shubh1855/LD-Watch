@@ -224,14 +224,19 @@ to their owning stage rather than being patched in test wrappers.
 
 Owner: tooling + tests. Plans: F09, F10. Issues: I09, I15, I22, I23, I25.
 
-- [ ] Build audit library, collector and CLI in CI.
-- [ ] Run required suites once in clearly named stages; fail if a required suite is missing.
-- [ ] Verify expected artifacts exist before upload.
+- [x] Build audit library, collector and CLI in CI.
+- [x] Run required suites once in clearly named stages; fail if a required suite is missing.
+- [x] Verify expected artifacts exist before upload.
 - [ ] Wire a dedicated demo endpoint/database through the now-stable configuration.
 - [ ] Demonstrate baseline approval, clean run, harmless deviation, alert query and report export.
 - [ ] Verify repeatable setup/cleanup without modifying unrelated data.
 
 **Gate:** A fresh Linux checkout produces deliverables and a repeatable isolated demo.
+
+**Implementation status (2026-10-06):** CI now pins Go 1.26.1, builds all three
+deliverables, verifies artifact presence, runs race tests, runs `go vet`, runs
+the C audit fixture suite, and uploads build outputs. Demo endpoint wiring,
+report demonstration, and repeatable demo cleanup remain open.
 
 ## T11 — Reconcile documentation and close the review
 
