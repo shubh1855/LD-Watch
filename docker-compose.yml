@@ -10,10 +10,14 @@ services:
       dockerfile: docker/Dockerfile
     container_name: ldwatch-dev
     working_dir: /ld-watch
+    read_only: true
     volumes:
       - .:/src:ro
     tmpfs:
       - /ld-watch
+      - /tmp
+      - /root/.cache
+      - /go
     stdin_open: true
     tty: true
     command: ["/bin/bash", "-lc", "cp -a /src/. /ld-watch/ && exec /bin/bash"]
@@ -24,10 +28,14 @@ services:
   attack-test:
     image: ldwatch:dev
     working_dir: /ld-watch
+    read_only: true
     volumes:
       - .:/src:ro
     tmpfs:
       - /ld-watch
+      - /tmp
+      - /root/.cache
+      - /go
     stdin_open: true
     tty: true
     command: ["/bin/bash", "-lc", "cp -a /src/. /ld-watch/ && exec bash scripts/run_tests.sh"]
@@ -38,8 +46,12 @@ services:
   ci:
     image: ldwatch:dev
     working_dir: /ld-watch
+    read_only: true
     volumes:
       - .:/src:ro
     tmpfs:
       - /ld-watch
+      - /tmp
+      - /root/.cache
+      - /go
     command: ["/bin/bash", "-lc", "cp -a /src/. /ld-watch/ && exec bash -c 'make && go test ./... -v'"]

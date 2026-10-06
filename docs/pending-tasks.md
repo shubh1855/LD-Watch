@@ -227,16 +227,18 @@ Owner: tooling + tests. Plans: F09, F10. Issues: I09, I15, I22, I23, I25.
 - [x] Build audit library, collector and CLI in CI.
 - [x] Run required suites once in clearly named stages; fail if a required suite is missing.
 - [x] Verify expected artifacts exist before upload.
-- [ ] Wire a dedicated demo endpoint/database through the now-stable configuration.
-- [ ] Demonstrate baseline approval, clean run, harmless deviation, alert query and report export.
-- [ ] Verify repeatable setup/cleanup without modifying unrelated data.
+- [x] Wire a dedicated demo endpoint/database through the now-stable configuration.
+- [x] Demonstrate baseline approval, clean run, harmless deviation, alert query and report export.
+- [x] Verify repeatable setup/cleanup without modifying unrelated data.
 
-**Gate:** A fresh Linux checkout produces deliverables and a repeatable isolated demo.
+**Gate:** Passed 2026-10-06. A fresh Linux checkout produces deliverables and a repeatable isolated demo.
 
 **Implementation status (2026-10-06):** CI now pins Go 1.26.1, builds all three
 deliverables, verifies artifact presence, runs race tests, runs `go vet`, runs
-the C audit fixture suite, and uploads build outputs. Demo endpoint wiring,
-report demonstration, and repeatable demo cleanup remain open.
+the C audit fixture suite, and uploads build outputs. `scripts/demo_t10.sh` now
+uses a dedicated database/socket, approves a real `/bin/true` baseline, checks
+a clean rerun, injects one harmless `UNKNOWN_SO` deviation, queries alerts, and
+exports a report. Compose test services use read-only roots with tmpfs workspaces.
 
 ## T11 — Reconcile documentation and close the review
 
