@@ -2,8 +2,11 @@ package collector
 
 import (
 	"context"
+	"encoding/json"
+	"reflect"
 	"testing"
 
+	"github.com/shubh1855/ld-watch/internal/engine"
 	"github.com/shubh1855/ld-watch/internal/proto"
 	"github.com/shubh1855/ld-watch/internal/store"
 )
@@ -170,4 +173,98 @@ func detectionEvent(exe, so string, timestamp uint64) *proto.Event {
 	copy(ev.ExePath[:], exe)
 	copy(ev.SOPath[:], so)
 	return ev
+}
+
+func TestProcessorAcceptsAllApprovedSymbolProviders(t *testing.T) {
+	s, err := store.NewStore(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	ctx := context.Background()
+	providers := []string{"/lib/libc.so.6", "/opt/libalternate.so"}
+	binding := func(provider string, timestamp uint64) *proto.Event {
+		ev := detectionEvent("/bin/app", provider, timestamp)
+		ev.EventType = proto.EventSymBind
+		copy(ev.Symbol[:], "open")
+		copy(ev.RelatedPath[:], "/lib/requester.so")
+		return ev
+	}
+	for i, provider := range providers {
+		if err := s.PersistEvent(ctx, binding(provider, uint64(i+1)), "/bin/app", "source"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	approve := func(environment string) {
+		t.Helper()
+		if err := s.LearnBaselineEvents(ctx, "/bin/app", environment); err != nil {
+			t.Fatal(err)
+		}
+		candidates, err := s.ListBaselineCandidates(ctx, store.ListBaselineCandidatesParams{Exe: "/bin/app", EnvironmentKey: environment})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if environment == "production" && len(candidates) != 2 {
+			t.Fatalf("candidates = %+v", candidates)
+		}
+		version, err := s.ApproveBaseline(ctx, "/bin/app", environment)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := s.SelectBaseline(ctx, "/bin/app", environment, version.Version); err != nil {
+			t.Fatal(err)
+		}
+	}
+	approve("production")
+	p := NewProcessor(s.Queries, "production")
+	// Both providers, canonical path aliases, and a different requester are
+	// permitted within the selected executable/environment profile.
+	for i, provider := range []string{providers[0], providers[1], "/lib/./libc.so.6"} {
+		ev := binding(provider, uint64(10+i))
+		copy(ev.RelatedPath[:], "/lib/requester2.so")
+		if err := p.Process(ctx, ev); err != nil {
+			t.Fatal(err)
+		}
+	}
+	alerts, err := s.QueryAlerts(ctx, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(alerts) != 0 {
+		t.Fatalf("approved providers triggered alerts: %+v", alerts)
+	}
+
+	// A provider approved only in staging must still alert in production.
+	outsider := "/tmp/libc.so.6"
+	if err := s.PersistEvent(ctx, binding(outsider, 20), "/bin/app", "source"); err != nil {
+		t.Fatal(err)
+	}
+	approve("staging")
+	if err := NewProcessor(s.Queries, "staging").Process(ctx, binding(outsider, 21)); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Process(ctx, binding(outsider, 22)); err != nil {
+		t.Fatal(err)
+	}
+	alerts, err = s.QueryAlerts(ctx, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(alerts) != 1 || alerts[0].Rule != "SYMBOL_INTERPOSITION" || alerts[0].Severity != engine.SeverityCritical {
+		t.Fatalf("unapproved provider result: %+v", alerts)
+	}
+	var detail struct {
+		Baseline struct {
+			Version int64 `json:"version"`
+			Value   struct {
+				Providers []string `json:"providers"`
+			} `json:"value"`
+		} `json:"baseline"`
+	}
+	if err := json.Unmarshal([]byte(alerts[0].Detail), &detail); err != nil {
+		t.Fatal(err)
+	}
+	if detail.Baseline.Version != 1 || !reflect.DeepEqual(detail.Baseline.Value.Providers, providers) {
+		t.Fatalf("alert lost approved providers: %s", alerts[0].Detail)
+	}
 }

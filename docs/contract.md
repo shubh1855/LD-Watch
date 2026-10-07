@@ -175,6 +175,12 @@ version. Optional approved loads may be absent without alerting, but are
 checked when present. Missing profiles yield `MISSING_BASELINE`, not a
 fabricated clean result.
 
+Each tracked symbol accepts the full set of approved provider path identities
+within that selected executable/environment version, regardless of requester.
+Provider matching uses canonical paths, never basenames or baseline entry order.
+A binding outside that set yields `SYMBOL_INTERPOSITION`; its persisted
+`baseline.value.providers` array lists the approved providers in sorted order.
+
 ## Alerts and implementation handoff
 
 Canonical rules are `UNKNOWN_SO`, `PATH_HIJACK`, `SYMBOL_INTERPOSITION`, and
