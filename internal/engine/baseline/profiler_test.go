@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/shubh1855/ld-watch/internal/proto"
@@ -94,7 +95,7 @@ func TestProfilesAreScopedApprovedSelectedAndPersistent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if active.Version != 1 || !active.Libraries[0].Optional || active.DetectionPolicy().ExpectedSO["open"] != "/lib/libc.so.6" {
+	if active.Version != 1 || !active.Libraries[0].Optional || !reflect.DeepEqual(active.DetectionPolicy().ExpectedSO["open"], []string{"/lib/libc.so.6"}) {
 		t.Fatalf("unexpected persisted profile: %#v", active)
 	}
 	if _, err := p.Reload(ctx, "/usr/bin/beta", "production"); !errors.Is(err, ErrNoBaseline) {
@@ -195,9 +196,24 @@ func TestSymbolLearningUsesCompleteWireProvider(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := active.DetectionPolicy().ExpectedSO["open"]; got != "/lib/libc.so.6" {
-				t.Fatalf("approved provider = %q, want /lib/libc.so.6", got)
+			if got := active.DetectionPolicy().ExpectedSO["open"]; !reflect.DeepEqual(got, []string{"/lib/libc.so.6"}) {
+				t.Fatalf("approved providers = %v, want /lib/libc.so.6", got)
 			}
 		})
+	}
+}
+
+func TestDetectionPolicyPreservesAllSymbolProviders(t *testing.T) {
+	for _, symbols := range [][]Symbol{
+		{{Name: "open", Provider: "/lib/libc.so.6"}, {Name: "open", Provider: "/opt/libalternate.so"}},
+		{{Name: "open", Provider: "/opt/libalternate.so"}, {Name: "open", Provider: "/lib/libc.so.6"}},
+		{{Name: "open", Provider: "/lib/./libc.so.6"}, {Name: "open", Provider: "/opt/libalternate.so"}, {Name: "open", Provider: "/lib/libc.so.6"}},
+	} {
+		profile := &Profile{Executable: "/bin/app", EnvironmentKey: "production", Symbols: symbols}
+		got := profile.DetectionPolicy().ExpectedSO["open"]
+		want := []string{"/lib/libc.so.6", "/opt/libalternate.so"}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("approved providers = %v, want %v", got, want)
+		}
 	}
 }

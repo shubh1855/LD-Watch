@@ -62,7 +62,9 @@ func (p *Processor) Process(ctx context.Context, ev *proto.Event) error {
 		return fmt.Errorf("nil event")
 	}
 	exe, status := EnrichExecutable(ev)
-	if status == "unresolved" { p.unresolved.Add(1) }
+	if status == "unresolved" {
+		p.unresolved.Add(1)
+	}
 	if ev.Flags&(proto.FlagObjectUnresolved|proto.FlagSubjectTruncated|proto.FlagRelatedTruncated|proto.FlagSymbolTruncated) != 0 {
 		p.degraded.Add(1)
 	}
@@ -82,7 +84,9 @@ func (p *Processor) Process(ctx context.Context, ev *proto.Event) error {
 }
 
 func (p *Processor) detectAndPersist(ctx context.Context, ev *proto.Event, stored store.PersistedIdentity) error {
-	if ev.EventType != proto.EventSOLoad && ev.EventType != proto.EventSymBind { return nil }
+	if ev.EventType != proto.EventSOLoad && ev.EventType != proto.EventSymBind {
+		return nil
+	}
 	if ev.EventType == proto.EventSOLoad && ev.Flags&(proto.FlagSubjectTruncated|proto.FlagObjectUnresolved) != 0 {
 		return nil
 	}
@@ -91,7 +95,9 @@ func (p *Processor) detectAndPersist(ctx context.Context, ev *proto.Event, store
 	}
 	// Unknown executable identity cannot safely select a profile. The source
 	// event remains persisted with uncertainty; it is never treated as clean.
-	if stored.IdentityStatus != "source" || stored.Executable == "" { return nil }
+	if stored.IdentityStatus != "source" || stored.Executable == "" {
+		return nil
+	}
 	version, entries, err := p.queries.ActiveBaseline(ctx, stored.Executable, p.environmentKey)
 	if err == store.ErrNoActiveBaseline {
 		p.missing.Add(1)
@@ -99,11 +105,11 @@ func (p *Processor) detectAndPersist(ctx context.Context, ev *proto.Event, store
 			map[string]any{"identity": identity.Library(ev.SOPathStr()), "symbol": ev.SymbolStr()},
 			map[string]any{"status": "no_approved_baseline", "environment": p.environmentKey})
 	}
-		if err != nil {
-			return fmt.Errorf("load approved baseline for %s (%s): %w", stored.Executable, p.environmentKey, err)
-		}
+	if err != nil {
+		return fmt.Errorf("load approved baseline for %s (%s): %w", stored.Executable, p.environmentKey, err)
+	}
 	known := make(map[string]bool)
-	expectedSymbols := make(map[string]string)
+	expectedSymbols := make(map[string][]string)
 	pathsByName := make(map[string][]string)
 	for _, entry := range entries {
 		switch entry.EntryType {
@@ -112,7 +118,7 @@ func (p *Processor) detectAndPersist(ctx context.Context, ev *proto.Event, store
 			known[path] = true
 			pathsByName[baseName(path)] = append(pathsByName[baseName(path)], path)
 		case "SYMBOL_PROVIDER":
-			expectedSymbols[entry.Symbol] = identity.Library(entry.Identity)
+			expectedSymbols[entry.Symbol] = append(expectedSymbols[entry.Symbol], identity.Library(entry.Identity))
 		}
 	}
 	if ev.EventType == proto.EventSOLoad {
@@ -126,17 +132,20 @@ func (p *Processor) detectAndPersist(ctx context.Context, ev *proto.Event, store
 				return p.persistDetectionAlert(ctx, ev, stored, version.Version, a.Rule, a.Severity, map[string]any{"path": actual}, map[string]any{"path": candidates[0]})
 			}
 		}
-		a := (&rules.UnknownSORule{KnownSO:known}).Evaluate(ev)
+		a := (&rules.UnknownSORule{KnownSO: known}).Evaluate(ev)
 		if a != nil {
 			return p.persistDetectionAlert(ctx, ev, stored, version.Version, a.Rule, a.Severity, map[string]any{"path": actual}, map[string]any{"approved_libraries": sortedKeys(known)})
 		}
 		return nil
 	}
-	a := (&rules.SymbolInterposeRule{ExpectedSO:expectedSymbols}).Evaluate(ev)
+	for _, providers := range expectedSymbols {
+		sort.Strings(providers)
+	}
+	a := (&rules.SymbolInterposeRule{ExpectedSO: expectedSymbols}).Evaluate(ev)
 	if a != nil {
 		return p.persistDetectionAlert(ctx, ev, stored, version.Version, a.Rule, a.Severity,
 			map[string]any{"symbol": ev.SymbolStr(), "provider": identity.Library(ev.SOPathStr()), "requester": identity.Library(ev.RelatedPathStr())},
-			map[string]any{"provider": expectedSymbols[ev.SymbolStr()]})
+			map[string]any{"providers": expectedSymbols[ev.SymbolStr()]})
 	}
 	return nil
 }
@@ -146,7 +155,7 @@ func (p *Processor) persistDetectionAlert(ctx context.Context, ev *proto.Event, 
 		"event_type": ev.EventTypeName(), "process_instance": stored.ProcessKey,
 		"executable": stored.Executable, "observed": observed,
 		"baseline": map[string]any{"version": version, "value": baselineValue},
-		"origin": ev.MechanismName(), "flags": ev.Flags,
+		"origin":   ev.MechanismName(), "flags": ev.Flags,
 	}
 	body, err := json.Marshal(detail)
 	if err != nil {

@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/shubh1855/ld-watch/internal/identity"
 	"github.com/shubh1855/ld-watch/internal/store"
@@ -100,7 +101,7 @@ func (p *Profiler) Reload(ctx context.Context, exe, environmentKey string) (*Pro
 }
 
 func (v *Profile) DetectionPolicy() Policy {
-	out := Policy{KnownSO: map[string]bool{}, OptionalSO: map[string]bool{}, ExpectedSO: map[string]string{}}
+	out := Policy{KnownSO: map[string]bool{}, OptionalSO: map[string]bool{}, ExpectedSO: map[string][]string{}}
 	for _, l := range v.Libraries {
 		out.KnownSO[l.Identity] = true
 		if l.Optional {
@@ -108,14 +109,20 @@ func (v *Profile) DetectionPolicy() Policy {
 		}
 	}
 	for _, s := range v.Symbols {
-		out.ExpectedSO[s.Name] = s.Provider
+		out.ExpectedSO[s.Name] = append(out.ExpectedSO[s.Name], identity.Library(s.Provider))
+	}
+	for symbol, providers := range out.ExpectedSO {
+		slices.Sort(providers)
+		out.ExpectedSO[symbol] = slices.Compact(providers)
 	}
 	return out
 }
 
 type Policy struct {
 	KnownSO, OptionalSO map[string]bool
-	ExpectedSO          map[string]string
+	// ExpectedSO lists all approved providers per symbol for this profile.
+	// Matching is scoped to the selected executable/environment, not requester.
+	ExpectedSO map[string][]string
 }
 
 func (v *Profile) ExpectedLibraries() []Library { return append([]Library(nil), v.Libraries...) }
