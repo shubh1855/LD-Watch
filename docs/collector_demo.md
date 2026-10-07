@@ -69,6 +69,11 @@ Verified report summary:
 
 Report output is a top-level array. Detail is a JSON string, decoded above
 using fromjson; report timestamps are Unix nanoseconds. Do not use .alerts.
+Reports apply severity/date filters in SQLite and export all matching rows from
+one snapshot, including historical matches beyond the former 10,000-row cap.
+Rows are ordered by timestamp descending and ID. Later inserts belong to a
+subsequent export. Rows and JSON are buffered in memory, so use date/severity
+filters to keep large exports manageable.
 Diff reports the retained libdeviation.so as UNEXPECTED and does not execute
 a program.
 

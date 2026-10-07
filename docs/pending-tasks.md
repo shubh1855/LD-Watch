@@ -351,8 +351,24 @@ Validation: pre-fix reproduction timed out with exit 124. The C audit suite
 passed 17/17, including logging regressions. Race-enabled collector/integration
 tests passed, and shell syntax/whitespace checks passed. This is separate from
 the follow-ups #65–#68. Main now includes #65's connected-parent fork fix,
-#67's optional-library diff fix, and #68's provider-set fix. #66 remains open;
+#67's optional-library diff fix, #68's provider-set fix, and #66's report fix;
 the failed-initial-connection fork edge remains documented in the PR review.
+
+## Follow-up issue #66 — Complete and consistent report exports
+
+- [x] Apply severity and date filters in SQL before retrieving rows.
+- [x] Remove the report row-count cap and use one read snapshot to avoid
+  offset shifts while the collector inserts alerts.
+- [x] Add regression coverage for 10,050 alerts, severity/date filtering,
+  and a newer alert committed during an active export.
+- [x] Update report instructions, issue disposition and persistence guidance
+  for current main, preserving the existing T11 PR and README citations.
+
+Implementation: merged PR #73 (`4ba6ed0`), including snapshot fix `27482e2`.
+Race-enabled CLI/store tests, vet and whitespace checks passed for the fix.
+The export remains memory-buffered; it is not a streaming-memory guarantee.
+Latest T11 synchronization passed the full Go race suite, vet, 18 C fixtures,
+the isolated demo and documentation checks; see [current evidence](t11-evidence.md#report-fix-synchronization-2026-10-07).
 
 ## Future scope: not required for the initial completion gate
 

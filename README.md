@@ -712,6 +712,7 @@ ldwatch-cli diff --source events --exe /usr/bin/ssh --environment-key production
 ldwatch-cli report --output report.json
 ldwatch-cli report --output report.json --since 2025-01-01
 ldwatch-cli report --output report.json --since 2025-01-01 --until 2025-02-01
+ldwatch-cli report --output report.json --severity HIGH
 ```
 
 `diff` permits every approved optional library when present and reports MISSING
@@ -726,6 +727,12 @@ exclusive. `watch` prints each event's stable database row ID and process key;
 resume it with `--after ID`, and use `--pid` to filter a PID while retaining
 the process-instance key in output. `diff --source events` explicitly selects
 persisted loader observations as its comparison input.
+
+`alerts` defaults to the newest 100 rows; `--limit` accepts 1–10,000.
+`report` has no row-count cap: severity/date filters are applied in SQLite,
+and all matching alerts are read from one consistent snapshot, ordered by
+timestamp descending and ID. Inserts after that snapshot begins are not part
+of the export. `--output -` (the default) writes JSON to stdout.
 
 ---
 
@@ -818,8 +825,10 @@ jq '.[] | select(.Rule == "UNKNOWN_SO") | .Detail | fromjson' \
 
 The [verified demo output](docs/collector_demo.md#verified-output) contains four
 initial coverage alerts and one deviation. Reports support severity/date
-filters and consider at most the newest 10,000 severity-matching rows before
-date filtering; they are not unlimited archival exports.
+filters without the former 10,000-row truncation. The CLI still buffers the
+matching rows and formatted JSON in memory; it is not a bounded-memory streaming
+export. Narrow the severity/date range for large databases. Regression tests
+cover 10,050 alerts, historical ranges and inserts during an active read.
 
 ---
 

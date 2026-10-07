@@ -119,7 +119,7 @@ and handles newly generated SIGPIPE without changing application descriptor
 flags or signal disposition. Normal socket telemetry remains independent.
 
 Evidence: C suite passed 17/17; collector/integration race tests passed.
-See [logging policy](audit-logging.md). GitHub #64 closes when the fix merges;
+See [logging policy](audit-logging.md). GitHub #64 was fixed in merged PR #69;
 #65–#68 have separate dispositions below.
 
 ## Current follow-up dispositions after main synchronization
@@ -128,7 +128,7 @@ See [logging policy](audit-logging.md). GitHub #64 closes when the fix merges;
 | --- | --- |
 | #64 | Fixed by PR #69: silent default and bounded opt-in diagnostics; audit regression suite |
 | #65 | Connected-parent immediate fork delivery fixed by PR #70; failed-initial-connection edge remains documented in the PR review |
-| #66 | Open: report export still selects 10,000 rows before date filtering; a separate report fix branch is outside T11 |
+| #66 | Fixed by PR #73: SQL severity/date filtering and one unbounded snapshot read prevent truncation and concurrent-insert duplicates; `cmd/ldwatch-cli/report_test.go` covers large, historical, filtered and concurrent exports |
 | #67 | Fixed by PR #71: optional-library absence excluded from MISSING; required/unexpected cases retained |
 | #68 | Fixed by PR #72: all approved providers per symbol accepted; sorted provider-set alert detail and regression coverage |
 
