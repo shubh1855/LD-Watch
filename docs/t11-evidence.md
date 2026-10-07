@@ -5,10 +5,13 @@ Reviewed 2026-10-07 on `feature/T11`, created from updated main
 
 ## Reconciliation
 
-README now describes actual component paths, standard Go flag CLI, v1 framing,
-canonical tables, approved profiles and existing tests/commands. Removed claims
-for nonexistent shell tests/attack directories, native-layout wire structs,
-universal program coverage, prevention and completed remote protection.
+README preserves the original motivation, objectives, diagrams, team/workflow,
+phase plan and full citation list. Each original section is updated in place:
+the IPC table describes v1, schema describes canonical tables, alert examples
+match actual export fields, and scenario sections show existing validation
+commands with evidence limits. Demo/CLI/CI details are integrated into their
+sections rather than appended as a duplicate guide. Universal coverage,
+prevention and enforced branch protection are not claimed.
 
 Added [architecture](architecture.md), [protocol](protocol.md),
 [threat model](threat-model.md), [references](references.md). Updated
