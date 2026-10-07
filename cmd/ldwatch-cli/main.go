@@ -406,19 +406,9 @@ func report(args []string) error {
 		return e
 	}
 	defer close()
-	const pageSize int64 = 1000
-	filtered := make([]store.Alert, 0)
-	for offset := int64(0); ; offset += pageSize {
-		rows, err := q.ListAlertsForReport(context.Background(), store.ListAlertsForReportParams{
-			Severity: s, Start: start, End: end, Limit: pageSize, Offset: offset,
-		})
-		if err != nil {
-			return err
-		}
-		filtered = append(filtered, rows...)
-		if int64(len(rows)) < pageSize {
-			break
-		}
+	filtered, e := reportRows(context.Background(), q, s, start, end)
+	if e != nil {
+		return e
 	}
 	data, e := json.MarshalIndent(filtered, "", "  ")
 	if e != nil {
@@ -431,6 +421,19 @@ func report(args []string) error {
 	}
 	return os.WriteFile(*out, data, 0600)
 }
+
+func reportRows(ctx context.Context, q *store.Queries, severity string, start, end int64) ([]store.Alert, error) {
+	// One SQL read keeps all rows on the same SQLite snapshot. LIMIT -1 is
+	// unbounded; separate OFFSET reads can duplicate rows during collection.
+	rows, err := q.ListAlertsForReport(ctx, store.ListAlertsForReportParams{
+		Severity: severity, Start: start, End: end, Limit: -1,
+	})
+	if rows == nil && err == nil {
+		rows = []store.Alert{}
+	}
+	return rows, err
+}
+
 func parseDate(s string) (int64, error) {
 	if s == "" {
 		return 0, nil
