@@ -19,8 +19,8 @@ process's records trustworthy.
 The default endpoint is `/run/ldwatch/ldwatch.sock`. The collector `--socket`
 flag and a non-secure sender's absolute `LDWATCH_SOCKET` value select another
 endpoint; an empty or relative value is ignored. The collector owns this
-endpoint. T04 must reject a non-socket path and an active collector, set
-group-based (not world-writable) access, and retain `SO_PEERCRED` as
+endpoint. The collector rejects a non-socket path and an active collector, sets
+group-based (not world-writable) access, and retains `SO_PEERCRED` as
 attribution metadata.
 
 ## Transport and compatibility
@@ -97,7 +97,7 @@ they may never train a baseline or trigger a loaded-library deviation rule.
 A search origin never automatically becomes a load origin. A load is
 `UNKNOWN` without a one-to-one confirmed correlation. The current audit source
 has no affirmative preload signal and therefore must emit `UNKNOWN`, not
-`PRELOAD`, until T03 adds real evidence.
+`PRELOAD`. Affirmative preload evidence remains deferred beyond T11.
 
 ### Flags
 
@@ -151,7 +151,7 @@ correlation loss becomes an explicit health counter, never a silent alias.
 
 ## Persistence and baselines
 
-T05 adds versioned migrations, replacing PID-only processes, the current
+T05 implemented versioned migrations, replacing PID-only processes, the legacy
 `so_events`, and global `baseline_events`. Its logical records are:
 
 | Record | Required fields |

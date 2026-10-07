@@ -244,15 +244,19 @@ exports a report. Compose test services use read-only roots with tmpfs workspace
 
 Owner: documentation + all reviewers. Plan: F10. Issue: I24.
 
-- [ ] Update README tree, wire example, phase checklist and working commands.
-- [ ] Add architecture, protocol and threat-model documents matching implementation.
-- [ ] State actual coverage, secure-execution limits, integrity limits and detection-versus-prevention distinction.
-- [ ] Update demo instructions and include verified report output.
-- [ ] Verify academic references and remote CI/branch settings separately.
-- [ ] Record each issue as fixed, accepted limitation or deferred, with evidence links.
-- [ ] Keep deferred bonus/future work visible rather than checking it off as implemented.
+- [x] Update README tree, wire example, phase checklist and working commands.
+- [x] Add architecture, protocol and threat-model documents matching implementation.
+- [x] State actual coverage, secure-execution limits, integrity limits and detection-versus-prevention distinction.
+- [x] Update demo instructions and include verified report output.
+- [x] Verify academic references and remote CI/branch settings separately (blocked IEEE metadata explicitly deferred).
+- [x] Record each issue as fixed, accepted limitation or deferred, with evidence links.
+- [x] Keep deferred bonus/future work visible rather than checking it off as implemented.
 
-**Gate:** Every advertised capability has evidence, and every unresolved issue has an explicit disposition.
+**Gate:** Passed locally 2026-10-07. Every advertised capability has evidence,
+and every unresolved issue has an explicit disposition. See [T11 evidence](t11-evidence.md).
+Main CI passed; branch protection is disabled. Two blocked IEEE metadata checks
+remain manual follow-ups. Documentation reconciliation does not implement the
+deferred bonus/future scope or certify a fresh container run.
 
 ## Evidence record template
 
