@@ -330,9 +330,13 @@ func diff(args []string) error {
 		return e
 	}
 	expected := map[string]bool{}
+	required := map[string]bool{}
 	for _, x := range entries {
 		if x.EntryType == "LOAD" {
 			expected[x.Identity] = true
+			if x.Optional == 0 {
+				required[x.Identity] = true
+			}
 		}
 	}
 	observed := map[string]bool{}
@@ -360,7 +364,7 @@ func diff(args []string) error {
 			fmt.Printf("UNEXPECTED\t%s\n", p)
 		}
 	}
-	for p := range expected {
+	for p := range required {
 		if !observed[p] {
 			fmt.Printf("MISSING\t%s\n", p)
 		}
