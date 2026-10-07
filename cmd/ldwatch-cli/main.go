@@ -406,24 +406,9 @@ func report(args []string) error {
 		return e
 	}
 	defer close()
-	var rows []store.Alert
-	if s == "" {
-		rows, e = q.ListAlerts(context.Background(), 10000)
-	} else {
-		rows, e = q.ListAlertsBySeverity(context.Background(), store.ListAlertsBySeverityParams{Severity: s, Limit: 10000})
-	}
+	filtered, e := reportRows(context.Background(), q, s, start, end)
 	if e != nil {
 		return e
-	}
-	filtered := make([]store.Alert, 0, len(rows))
-	for _, a := range rows {
-		if start != 0 && a.Timestamp < start {
-			continue
-		}
-		if end != 0 && a.Timestamp >= end {
-			continue
-		}
-		filtered = append(filtered, a)
 	}
 	data, e := json.MarshalIndent(filtered, "", "  ")
 	if e != nil {
@@ -436,6 +421,19 @@ func report(args []string) error {
 	}
 	return os.WriteFile(*out, data, 0600)
 }
+
+func reportRows(ctx context.Context, q *store.Queries, severity string, start, end int64) ([]store.Alert, error) {
+	// One SQL read keeps all rows on the same SQLite snapshot. LIMIT -1 is
+	// unbounded; separate OFFSET reads can duplicate rows during collection.
+	rows, err := q.ListAlertsForReport(ctx, store.ListAlertsForReportParams{
+		Severity: severity, Start: start, End: end, Limit: -1,
+	})
+	if rows == nil && err == nil {
+		rows = []store.Alert{}
+	}
+	return rows, err
+}
+
 func parseDate(s string) (int64, error) {
 	if s == "" {
 		return 0, nil
