@@ -406,24 +406,19 @@ func report(args []string) error {
 		return e
 	}
 	defer close()
-	var rows []store.Alert
-	if s == "" {
-		rows, e = q.ListAlerts(context.Background(), 10000)
-	} else {
-		rows, e = q.ListAlertsBySeverity(context.Background(), store.ListAlertsBySeverityParams{Severity: s, Limit: 10000})
-	}
-	if e != nil {
-		return e
-	}
-	filtered := make([]store.Alert, 0, len(rows))
-	for _, a := range rows {
-		if start != 0 && a.Timestamp < start {
-			continue
+	const pageSize int64 = 1000
+	filtered := make([]store.Alert, 0)
+	for offset := int64(0); ; offset += pageSize {
+		rows, err := q.ListAlertsForReport(context.Background(), store.ListAlertsForReportParams{
+			Severity: s, Start: start, End: end, Limit: pageSize, Offset: offset,
+		})
+		if err != nil {
+			return err
 		}
-		if end != 0 && a.Timestamp >= end {
-			continue
+		filtered = append(filtered, rows...)
+		if int64(len(rows)) < pageSize {
+			break
 		}
-		filtered = append(filtered, a)
 	}
 	data, e := json.MarshalIndent(filtered, "", "  ")
 	if e != nil {

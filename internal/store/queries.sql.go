@@ -298,6 +298,40 @@ func (q *Queries) ListAlertsBySeverity(ctx context.Context, arg ListAlertsBySeve
 	return items, nil
 }
 
+const listAlertsForReport = `-- name: ListAlertsForReport :many
+SELECT id, severity, rule, process_key, pid, exe, detail, timestamp, deduplication_key FROM alerts
+WHERE (? = '' OR severity = ?) AND (? = 0 OR timestamp >= ?) AND (? = 0 OR timestamp < ?)
+ORDER BY timestamp DESC, id LIMIT ? OFFSET ?
+`
+
+type ListAlertsForReportParams struct {
+	Severity string
+	Start    int64
+	End      int64
+	Limit    int64
+	Offset   int64
+}
+
+func (q *Queries) ListAlertsForReport(ctx context.Context, arg ListAlertsForReportParams) ([]Alert, error) {
+	rows, err := q.db.QueryContext(ctx, listAlertsForReport, arg.Severity, arg.Severity, arg.Start, arg.Start, arg.End, arg.End, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Alert
+	for rows.Next() {
+		var i Alert
+		if err := rows.Scan(&i.ID, &i.Severity, &i.Rule, &i.ProcessKey, &i.Pid, &i.Exe, &i.Detail, &i.Timestamp, &i.DeduplicationKey); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listBaselineCandidates = `-- name: ListBaselineCandidates :many
 SELECT exe, environment_key, entry_type, identity, symbol, observation_count FROM baseline_candidates WHERE exe = ? AND environment_key = ? ORDER BY entry_type,identity,symbol
 `

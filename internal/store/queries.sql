@@ -87,5 +87,13 @@ SELECT * FROM alerts ORDER BY timestamp DESC, id LIMIT ?;
 -- name: ListAlertsBySeverity :many
 SELECT * FROM alerts WHERE severity = ? ORDER BY timestamp DESC, id LIMIT ?;
 
+-- name: ListAlertsForReport :many
+SELECT * FROM alerts
+WHERE (? = '' OR severity = ?)
+  AND (? = 0 OR timestamp >= ?)
+  AND (? = 0 OR timestamp < ?)
+ORDER BY timestamp DESC, id
+LIMIT ? OFFSET ?;
+
 -- name: DeleteExpiredEvents :execrows
 DELETE FROM loader_events WHERE id IN (SELECT id FROM loader_events WHERE loader_events.timestamp > 0 AND loader_events.timestamp < ? AND event_type IN ('SEARCH','LOAD','SYMBOL_BIND','OBJECT_CLOSE') ORDER BY loader_events.timestamp LIMIT ?);
