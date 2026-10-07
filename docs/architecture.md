@@ -45,7 +45,12 @@ absence of an alert for those records does not establish a clean execution.
 Same-name/different-path loads produce PATH_HIJACK only with one unambiguous
 approved path; otherwise unapproved paths produce UNKNOWN_SO. Symbol providers
 are checked only when the profile has an expectation for a tracked symbol.
-Alert deduplication includes process instance, rule, profile and observation.
+Each tracked symbol accepts all approved provider identities in the selected
+executable/environment version, independent of requester. Outside providers
+produce SYMBOL_INTERPOSITION with a sorted `baseline.value.providers` array.
+CLI diff reports absent required loads but skips absent optional loads; optional
+loads remain allowed when present. Alert deduplication includes process
+instance, rule, profile and observation.
 
 ## Failure boundaries
 

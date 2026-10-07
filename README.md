@@ -714,6 +714,11 @@ ldwatch-cli report --output report.json --since 2025-01-01
 ldwatch-cli report --output report.json --since 2025-01-01 --until 2025-02-01
 ```
 
+`diff` permits every approved optional library when present and reports MISSING
+only for absent required loads. A tracked symbol can have multiple approved
+providers; any canonical path in that set is accepted. An outside provider
+triggers SYMBOL_INTERPOSITION, and alert detail lists the approved providers.
+
 All commands accept `--db PATH` (default `/var/ldwatch/events.db`). Alert severity
 filters accept `CRITICAL`, `HIGH`, `MEDIUM`, or `LOW`. Report dates accept
 `YYYY-MM-DD` or RFC3339 timestamps; `--since` is inclusive and `--until` is
@@ -831,6 +836,12 @@ contents. Bounded transport/object tracking, queue pressure, truncation and
 storage failures can reduce coverage. Counters reset on restart; there is no
 durable overflow spool or universal no-loss guarantee. See
 [threat model](docs/threat-model.md) and [T09 measurements](docs/t09-evidence.md).
+**Audit diagnostics are opt-in and bounded.**
+Normal operation emits no hook logs. `LDWATCH_VERBOSE=1` writes best-effort
+fragments only to an already nonblocking stderr pipe; other descriptor types
+are skipped, full pipes drop fragments, and closed readers do not terminate the
+application through audit logging. Telemetry delivery is independent of these
+diagnostics. See [logging policy and regression evidence](docs/audit-logging.md).
 
 **Statically linked binaries are not covered.**
 `LD_AUDIT` only works when `ld.so` is involved. A statically linked binary

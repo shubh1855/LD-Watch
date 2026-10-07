@@ -338,6 +338,22 @@ Remaining limitations:
 Gate passed on:
 ```
 
+## Follow-up issue #64 — Bound audit diagnostic output
+
+- [x] Reproduce the default logger hanging with a full, undrained stderr pipe.
+- [x] Make diagnostics silent by default and explicitly opt-in.
+- [x] Permit only already nonblocking pipes, drop failed fragments without retry,
+  preserve descriptor flags, and suppress only newly generated diagnostic SIGPIPE.
+- [x] Cover default/full/closed-pipe behavior and preserve hook/formatter checks.
+- [x] Document the [bounded logging policy](audit-logging.md).
+
+Validation: pre-fix reproduction timed out with exit 124. The C audit suite
+passed 17/17, including logging regressions. Race-enabled collector/integration
+tests passed, and shell syntax/whitespace checks passed. This is separate from
+the follow-ups #65–#68. Main now includes #65's connected-parent fork fix,
+#67's optional-library diff fix, and #68's provider-set fix. #66 remains open;
+the failed-initial-connection fork edge remains documented in the PR review.
+
 ## Future scope: not required for the initial completion gate
 
 - Static-binary/system-wide coverage through a separately designed telemetry source.

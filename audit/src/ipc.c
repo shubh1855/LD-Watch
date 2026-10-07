@@ -194,6 +194,9 @@ void ldw_ipc_send(const ldwatch_event_t *event)
         ldw_process_start_ticks = 0;
         ldw_exe_truncated = 0;
         ldw_owner_pid = 0;
+        /* The parent's retry deadline must not delay the child's first send.
+         * A failed child connection will establish its own backoff. */
+        ldw_next_retry_ns = 0;
     }
     if (atomic_load(&ldw_sock_fd) < 0)
         ldw_ipc_init();

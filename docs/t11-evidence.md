@@ -43,9 +43,29 @@ evidence for merged T10/main, not a claim about a future T11 PR run.
 with “Branch protection has been disabled on this repository.” The README no
 longer claims it is enabled. No remote settings were changed.
 
-`gh issue list --state open --limit 50 --json number,title,url` returned `[]`.
-Implementation dispositions are retained locally even though GitHub currently
-has no open issues. Deferred feature scope is not implemented by issue closure.
+The initial `gh issue list` check returned `[]`. A subsequent review opened
+follow-up issues #64–#68. After the main synchronization below, #66 remains
+open; the others have merged fixes with the #65 scope limitation documented.
+Deferred feature scope is not implemented by issue closure.
+
+## Synchronization with newer main fixes
+
+Existing PR #63 is retained. Latest main `df5c531` is merged into feature/T11,
+preserving shared branch history. README and demo-guide conflicts are resolved
+by retaining both T11 structure/citations and the bounded diagnostic policy.
+The provider-set contract update from PR #72 is retained.
+
+Main's fixes for #64/#65/#67/#68 are included. Runtime files in this branch match
+main; T11 adds documentation only. The unrelated report-truncation commit is
+absent from the cleaned branch history and #66 remains separate. The historical
+10,000-row report limitation remains accurately documented until that fix lands.
+
+Synchronization validation passed: full `go test -race ./...`, C audit suite
+18/18, local-link/JSON/fence/conflict-marker checks and whitespace checks.
+`git diff origin/main -- audit cmd internal scripts tests` was empty, confirming
+that runtime code matches main. Main's [CI run 37592221940](https://github.com/shubh1855/LD-Watch/actions/runs/37592221940)
+also passed for `df5c531f629811fe86ca0c08d37a3910a0e9dfa2`; the updated T11 PR
+must run its own checks after pushing.
 
 ## Explicit follow-ups and accepted limits
 

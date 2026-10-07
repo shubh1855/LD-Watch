@@ -109,6 +109,31 @@ runtime evidence remain explicit follow-ups in [T11 evidence](t11-evidence.md).
 
 ## Technical references
 
+## Follow-up #64 — Diagnostic logging can block stderr
+
+The original I02 transport fix did not bound its separate synchronous stderr
+logging path. A prefilled blocking pipe with default diagnostics reproduced an
+application timeout (exit 124). The follow-up changes diagnostics to opt-in,
+permits writes only to already nonblocking pipes, drops full-pipe fragments,
+and handles newly generated SIGPIPE without changing application descriptor
+flags or signal disposition. Normal socket telemetry remains independent.
+
+Evidence: C suite passed 17/17; collector/integration race tests passed.
+See [logging policy](audit-logging.md). GitHub #64 closes when the fix merges;
+#65–#68 have separate dispositions below.
+
+## Current follow-up dispositions after main synchronization
+
+| GitHub issue | Status and evidence |
+| --- | --- |
+| #64 | Fixed by PR #69: silent default and bounded opt-in diagnostics; audit regression suite |
+| #65 | Connected-parent immediate fork delivery fixed by PR #70; failed-initial-connection edge remains documented in the PR review |
+| #66 | Open: report export still selects 10,000 rows before date filtering; a separate report fix branch is outside T11 |
+| #67 | Fixed by PR #71: optional-library absence excluded from MISSING; required/unexpected cases retained |
+| #68 | Fixed by PR #72: all approved providers per symbol accepted; sorted provider-set alert detail and regression coverage |
+
+## Technical reference links
+
 - [Linux audit API](https://man7.org/linux/man-pages/man7/rtld-audit.7.html): search callbacks describe candidates; object-open callbacks describe loads; object-close callbacks support lifecycle tracking.
 - [Unix sockets](https://man7.org/linux/man-pages/man7/unix.7.html): peer credentials and stream/signal behavior.
 - [Dynamic loader](https://man7.org/linux/man-pages/man8/ld.so.8.html): instrumentation and secure-execution scope.

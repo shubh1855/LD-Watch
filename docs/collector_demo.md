@@ -70,7 +70,14 @@ Verified report summary:
 Report output is a top-level array. Detail is a JSON string, decoded above
 using fromjson; report timestamps are Unix nanoseconds. Do not use .alerts.
 Diff reports the retained libdeviation.so as UNEXPECTED and does not execute
-a program. Watch streams stored rows until interrupted:
+a program.
+
+Audit diagnostics are silent by default; the library sends binary events to
+the collector independently. Confirm observations in SQLite or with the CLI.
+Explicit diagnostics require an already nonblocking stderr pipe; see
+[bounded logging policy](audit-logging.md).
+
+Watch streams stored rows until interrupted:
 
 ```bash
 bin/ldwatch-cli watch --db /tmp/ldwatch-demo-review/events.db --after 0

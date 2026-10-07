@@ -66,7 +66,7 @@ func TestPathHijackRuleFiresForWrongPath(t *testing.T) {
 }
 
 func TestSymbolInterpositionRuleFiresForWrongSO(t *testing.T) {
-	rule := &SymbolInterposeRule{ExpectedSO: map[string]string{"open": "/lib/libc.so.6"}}
+	rule := &SymbolInterposeRule{ExpectedSO: map[string][]string{"open": {"/lib/libc.so.6"}}}
 	alert := rule.Evaluate(makeSymbolEvent(3333, "/tmp/evil.so", "open"))
 	if alert == nil {
 		t.Fatal("expected alert for symbol interposition")
@@ -82,5 +82,31 @@ func TestSymbolInterpositionRuleFiresForWrongSO(t *testing.T) {
 	}
 	if alert.Detail["actual_so"] != "/tmp/evil.so" {
 		t.Errorf("actual_so: got %q", alert.Detail["actual_so"])
+	}
+}
+
+func TestSymbolInterpositionMatchesAnyApprovedProvider(t *testing.T) {
+	for _, providers := range [][]string{
+		{"/lib/libc.so.6", "/opt/libalternate.so"},
+		{"/opt/libalternate.so", "/lib/libc.so.6"},
+	} {
+		rule := &SymbolInterposeRule{ExpectedSO: map[string][]string{"open": providers}}
+		for _, provider := range []string{"/lib/libc.so.6", "/opt/libalternate.so", "/lib/./libc.so.6"} {
+			if alert := rule.Evaluate(makeSymbolEvent(3333, provider, "open")); alert != nil {
+				t.Fatalf("approved provider %q alerted: %+v", provider, alert)
+			}
+		}
+		for _, provider := range []string{"/tmp/evil.so", "/tmp/libc.so.6"} {
+			alert := rule.Evaluate(makeSymbolEvent(3333, provider, "open"))
+			if alert == nil || alert.Severity != engine.SeverityCritical {
+				t.Fatalf("unapproved provider %q result: %+v", provider, alert)
+			}
+			if got := alert.Detail["expected_so"]; got != "/lib/libc.so.6, /opt/libalternate.so" {
+				t.Fatalf("expected providers = %q", got)
+			}
+		}
+		if rule.Evaluate(nil) != nil || rule.Evaluate(makeSOEvent(3333, "/tmp/evil.so")) != nil || rule.Evaluate(makeSymbolEvent(3333, "/tmp/evil.so", "untracked")) != nil {
+			t.Fatal("untracked event alerted")
+		}
 	}
 }
