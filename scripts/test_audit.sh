@@ -276,6 +276,17 @@ else
   fail "Could not compile controlled wire receiver"
 fi
 
+# Fork regression uses the real IPC sender with a frozen monotonic clock.
+info "Test 12 — immediate child telemetry after fork"
+FORK_PROBE="$TEST_DIR/fork-telemetry"
+if gcc -Wall -Wextra -Werror -O2 -o "$FORK_PROBE" \
+  tests/fixtures/fork_telemetry.c audit/src/ipc.c -Wl,--wrap=clock_gettime && \
+  timeout 5 "$FORK_PROBE" "$TEST_DIR/fork.sock"; then
+  pass "child reconnects immediately with its own peer identity; parent stays connected"
+else
+  fail "fork telemetry regression"
+fi
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo ""
 echo "────────────────────────────────────"
