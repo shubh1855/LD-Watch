@@ -743,6 +743,13 @@ CREATE TABLE alerts (
 
 ## Known Limitations
 
+**Audit diagnostics are opt-in and bounded.**
+Normal operation emits no hook logs. `LDWATCH_VERBOSE=1` writes best-effort
+fragments only to an already nonblocking stderr pipe; other descriptor types
+are skipped, full pipes drop fragments, and closed readers do not terminate the
+application through audit logging. Telemetry delivery is independent of these
+diagnostics. See [logging policy and regression evidence](docs/audit-logging.md).
+
 **Statically linked binaries are not covered.**
 `LD_AUDIT` only works when `ld.so` is involved. A statically linked binary
 doesn't use the dynamic linker, so `audit.so` never loads and no telemetry
