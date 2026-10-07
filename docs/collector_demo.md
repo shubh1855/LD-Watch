@@ -47,7 +47,10 @@ If you prefer the full explicit form:
 LD_AUDIT=./audit/audit.so ls /tmp
 ```
 
-You should see `[ldwatch]` audit logs on stderr. The audit library also sends binary events to the collector socket.
+Audit diagnostics are silent by default; the library sends binary events to
+the collector independently. Confirm observations in SQLite or with the CLI.
+Explicit diagnostics require an already nonblocking stderr pipe; see
+[bounded logging policy](audit-logging.md).
 
 ## Query SQLite live
 

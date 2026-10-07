@@ -5,8 +5,13 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <sys/stat.h>
+#include <time.h>
 
-static int ldw_verbose = 1;
+static int ldw_verbose = 0;
 
 /*
  * la_version — first function ld.so calls into our audit library.
@@ -18,8 +23,7 @@ unsigned int la_version(unsigned int version)
 {
     (void)version;
     const char *verbose = getenv("LDWATCH_VERBOSE");
-    if (verbose && verbose[0] == '0' && verbose[1] == '\0')
-        ldw_verbose = 0;
+    ldw_verbose = verbose && verbose[0] == '1' && verbose[1] == '\0';
 
     if (ldw_verbose)
     {
@@ -52,24 +56,56 @@ void ldw_copy_field(char *dst, size_t dst_size, const char *src,
         *flags |= truncation_flag;
 }
 
-/* Safe write helpers */
+/* Best-effort diagnostic helpers. Default operation is silent. */
 
 /*
  * We never use printf/fprintf inside audit hooks.
  * Reason: the audit library runs inside every audited process.
  * printf uses malloc internally, which can cause re-entrancy issues
  * when we are auditing a process that is itself allocating memory.
- * write() is async-signal-safe and has no such problem.
+ * Async-signal-safe does not mean nonblocking. Only already-nonblocking
+ * pipes are supported: regular files and terminals can stall callbacks.
+ * Never change the application's descriptor flags or SIGPIPE disposition.
  */
 
 void ldw_write_str(const char *s)
 {
-    if (!s)
+    if (!s || !ldw_verbose)
         return;
+    int saved_errno = errno;
+    struct stat st;
+    int flags = fcntl(STDERR_FILENO, F_GETFL);
+    if (flags < 0 || !(flags & O_NONBLOCK) ||
+        fstat(STDERR_FILENO, &st) != 0 || !S_ISFIFO(st.st_mode))
+    {
+        errno = saved_errno;
+        return;
+    }
     size_t len = 0;
-    while (s[len])
+    /* Linux PIPE_BUF is 4096: each fragment is atomic or dropped on EAGAIN. */
+    while (len < 4096 && s[len])
         len++;
-    write(STDERR_FILENO, s, len);
+
+    sigset_t blocked, old_mask, pending;
+    sigemptyset(&blocked);
+    sigaddset(&blocked, SIGPIPE);
+    if (sigprocmask(SIG_BLOCK, &blocked, &old_mask) != 0)
+    {
+        errno = saved_errno;
+        return;
+    }
+    if (sigpending(&pending) == 0)
+    {
+        int was_pending = sigismember(&pending, SIGPIPE);
+        /* One attempt, no retry or wait for diagnostic capacity. */
+        if (write(STDERR_FILENO, s, len) < 0 && errno == EPIPE && !was_pending)
+        {
+            const struct timespec no_wait = {0, 0};
+            sigtimedwait(&blocked, NULL, &no_wait);
+        }
+    }
+    sigprocmask(SIG_SETMASK, &old_mask, NULL);
+    errno = saved_errno;
 }
 
 void ldw_write_int(uint64_t n)

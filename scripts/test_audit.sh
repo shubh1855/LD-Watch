@@ -36,6 +36,32 @@ fi
 info "audit.so ready."
 echo ""
 
+LOGGING_BIN="$TEST_DIR/audit-logging"
+gcc -Wall -Wextra -O2 -o "$LOGGING_BIN" tests/fixtures/audit_logging.c
+diagnostics() {
+  LDWATCH_VERBOSE=1 timeout 5 "$LOGGING_BIN" capture "$AUDIT_LIB" "$@"
+}
+
+info "Test 0d - default logging cannot block on a full stderr pipe"
+if env -u LDWATCH_VERBOSE LDWATCH_SOCKET="$TEST_DIR/no-logging-collector.sock" \
+  "$LOGGING_BIN" blocking "$AUDIT_LIB" /bin/true && \
+  env -u LDWATCH_VERBOSE "$LOGGING_BIN" quiet "$AUDIT_LIB" /bin/true; then
+  pass "default operation completes and emits no diagnostics"
+else
+  fail "default operation blocked or wrote diagnostics"
+fi
+
+info "Test 0e - explicit diagnostics are bounded for full, blocking, and closed pipes"
+if LDWATCH_VERBOSE=1 "$LOGGING_BIN" full "$AUDIT_LIB" /bin/true && \
+  LDWATCH_VERBOSE=1 "$LOGGING_BIN" blocking "$AUDIT_LIB" /bin/true && \
+  LDWATCH_VERBOSE=1 "$LOGGING_BIN" closed "$AUDIT_LIB" /bin/true; then
+  pass "diagnostics drop safely without changing stderr flags or terminating the process"
+else
+  fail "diagnostic output blocked or caused SIGPIPE"
+fi
+echo ""
+
+
 # Test 0a: absent collector remains fail-open and bounded
 info "Test 0a - audited application remains bounded when collector is absent"
 MISSING_SOCKET="$TEST_DIR/no-collector.sock"
@@ -137,7 +163,7 @@ info "Test 0 — audit formatters support full uint64 values"
 FORMATTER_BIN="$TEST_DIR/formatters"
 if gcc -Wall -Wextra -I./audit/include \
   -o "$FORMATTER_BIN" tests/fixtures/formatters.c audit/src/audit.c; then
-  FORMATTER_OUTPUT=$("$FORMATTER_BIN" 2>&1)
+  FORMATTER_OUTPUT=$(LDWATCH_VERBOSE=1 timeout 5 "$LOGGING_BIN" capture "" "$FORMATTER_BIN" | tail -n 2)
   if [ "$FORMATTER_OUTPUT" = $'18446744073709551615\n0xffffffffffffffff' ]; then
     pass "uint64 decimal and hexadecimal output is complete"
   else
@@ -150,7 +176,7 @@ echo ""
 
 # ── Test 1: Library loads and la_version fires ─────────────────────────────────
 info "Test 1 — la_version: audit library loads cleanly"
-OUTPUT=$(LD_AUDIT=$AUDIT_LIB ls /tmp 2>&1 >/dev/null)
+OUTPUT=$(diagnostics ls /tmp)
 if echo "$OUTPUT" | grep -q "audit library loaded"; then
   pass "la_version fired — library loaded successfully"
 else
@@ -159,7 +185,7 @@ fi
 
 # ── Test 2: la_objopen fires on SO load ───────────────────────────────────────
 info "Test 2 — la_objopen: detects shared object loads"
-OUTPUT=$(LD_AUDIT=$AUDIT_LIB ls /tmp 2>&1 >/dev/null)
+OUTPUT=$(diagnostics ls /tmp)
 if echo "$OUTPUT" | grep -q "\[ldwatch\] LOAD"; then
   pass "la_objopen fired — SO load events captured"
 else
@@ -168,7 +194,7 @@ fi
 
 # ── Test 3: libc.so appears in load events ────────────────────────────────────
 info "Test 3 — la_objopen: libc.so.6 appears in load events"
-OUTPUT=$(LD_AUDIT=$AUDIT_LIB ls /tmp 2>&1 >/dev/null)
+OUTPUT=$(diagnostics ls /tmp)
 if echo "$OUTPUT" | grep "LOAD" | grep -q "libc.so"; then
   pass "libc.so.6 detected in SO load events"
 else
@@ -177,7 +203,7 @@ fi
 
 # ── Test 4: la_objsearch fires ────────────────────────────────────────────────
 info "Test 4 — la_objsearch: SO search events captured"
-OUTPUT=$(LD_AUDIT=$AUDIT_LIB ls /tmp 2>&1 >/dev/null)
+OUTPUT=$(diagnostics ls /tmp)
 if echo "$OUTPUT" | grep -q "\[ldwatch\] SEARCH"; then
   pass "la_objsearch fired — search events captured"
 else
@@ -188,7 +214,7 @@ fi
 info "Test 5 — la_objsearch: LD_LIBRARY_PATH usage flagged"
 TEST_LIBRARY_DIR="$TEST_DIR/libs"
 mkdir -p "$TEST_LIBRARY_DIR"
-OUTPUT=$(LD_LIBRARY_PATH="$TEST_LIBRARY_DIR" LD_AUDIT=$AUDIT_LIB ls /tmp 2>&1 >/dev/null)
+OUTPUT=$(LD_LIBRARY_PATH="$TEST_LIBRARY_DIR" diagnostics ls /tmp)
 if echo "$OUTPUT" | grep "SEARCH" | grep -q "LD_LIBRARY_PATH"; then
   pass "LD_LIBRARY_PATH usage detected in search events"
 else
@@ -198,7 +224,7 @@ fi
 # ── Test 6: la_symbind64 fires on 'open' ──────────────────────────────────────
 info "Test 6 — la_symbind64: critical symbol 'open' is tracked"
 if [ -n "$PROBE_BIN" ]; then
-  OUTPUT=$(LD_AUDIT=$AUDIT_LIB $PROBE_BIN 2>&1 >/dev/null)
+  OUTPUT=$(diagnostics "$PROBE_BIN")
   if echo "$OUTPUT" | grep "SYMBOL" | grep -q "open"; then
     pass "la_symbind64 fired for critical symbol 'open'"
   else
@@ -211,7 +237,7 @@ fi
 # ── Test 7: la_symbind64 fires for 'read' ─────────────────────────────────────
 info "Test 7 — la_symbind64: critical symbol 'read' is tracked"
 if [ -n "$PROBE_BIN" ]; then
-  OUTPUT=$(LD_AUDIT=$AUDIT_LIB $PROBE_BIN 2>&1 >/dev/null)
+  OUTPUT=$(diagnostics "$PROBE_BIN")
   if echo "$OUTPUT" | grep "SYMBOL" | grep -q "read"; then
     pass "la_symbind64 fired for critical symbol 'read'"
   else
@@ -223,7 +249,7 @@ fi
 
 # ── Test 8: non-critical symbols are NOT logged ───────────────────────────────
 info "Test 8 — la_symbind64: non-critical symbols are ignored (no noise)"
-OUTPUT=$(LD_AUDIT=$AUDIT_LIB ls /tmp 2>&1 >/dev/null)
+OUTPUT=$(diagnostics ls /tmp)
 if echo "$OUTPUT" | grep "SYMBOL" | grep -q "strlen"; then
   fail "Non-critical symbol 'strlen' appeared — filter not working"
 else
@@ -232,7 +258,7 @@ fi
 
 # ── Test 9: PID is logged in all events ───────────────────────────────────────
 info "Test 9 — all events include pid"
-OUTPUT=$(LD_AUDIT=$AUDIT_LIB ls /tmp 2>&1 >/dev/null)
+OUTPUT=$(diagnostics ls /tmp)
 if echo "$OUTPUT" | grep -q "pid="; then
   pass "PID is present in event output"
 else
@@ -241,8 +267,8 @@ fi
 
 # ── Test 10: multiple binaries produce separate events ────────────────────────
 info "Test 10 — events fire independently per binary"
-OUT1=$(LD_AUDIT=$AUDIT_LIB ls /tmp 2>&1 >/dev/null | grep "LOAD" | wc -l)
-OUT2=$(LD_AUDIT=$AUDIT_LIB curl --version 2>&1 >/dev/null | grep "LOAD" | wc -l)
+OUT1=$(diagnostics ls /tmp | grep "LOAD" | wc -l)
+OUT2=$(diagnostics curl --version | grep "LOAD" | wc -l)
 if [ "$OUT1" -gt 0 ] && [ "$OUT2" -gt 0 ]; then
   pass "Events fire for multiple different binaries (ls: $OUT1 SOs, curl: $OUT2 SOs)"
 else

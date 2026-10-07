@@ -73,6 +73,21 @@ Read [fix plans](fixes.md) for remediation and [ordered pending tasks](pending-t
 
 ## Technical references
 
+## Follow-up #64 — Diagnostic logging can block stderr
+
+The original I02 transport fix did not bound its separate synchronous stderr
+logging path. A prefilled blocking pipe with default diagnostics reproduced an
+application timeout (exit 124). The follow-up changes diagnostics to opt-in,
+permits writes only to already nonblocking pipes, drops full-pipe fragments,
+and handles newly generated SIGPIPE without changing application descriptor
+flags or signal disposition. Normal socket telemetry remains independent.
+
+Evidence: C suite passed 17/17; collector/integration race tests passed.
+See [logging policy](audit-logging.md). GitHub #64 closes when the fix merges;
+#65–#68 remain separate issues.
+
+## Technical reference links
+
 - [Linux audit API](https://man7.org/linux/man-pages/man7/rtld-audit.7.html): search callbacks describe candidates; object-open callbacks describe loads; object-close callbacks support lifecycle tracking.
 - [Unix sockets](https://man7.org/linux/man-pages/man7/unix.7.html): peer credentials and stream/signal behavior.
 - [Dynamic loader](https://man7.org/linux/man-pages/man8/ld.so.8.html): instrumentation and secure-execution scope.
