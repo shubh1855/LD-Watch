@@ -1,152 +1,148 @@
-# Collector live demo
+# Collector and detection demo
 
-Goal: show `audit/audit.so` sending events into the collector, then query SQLite live.
+## Isolated end-to-end demo
 
-## One-time setup
+From repository root on x86_64 Linux/glibc with GCC, Make, Go 1.26.1 and sqlite3:
 
-From repo root:
-
-```sh
-bash scripts/demo_collector_setup.sh
+```bash
+LDWATCH_DEMO_DIR=/tmp/ldwatch-demo-review bash scripts/demo_t10.sh
 ```
 
-This creates writable demo dirs:
+Use a new directory. The script refuses an existing events.db or collector.sock.
+Without LDWATCH_DEMO_DIR it uses a unique temporary directory and removes it on
+exit. With an explicit directory it preserves results and stops the collector.
+It builds all deliverables and uses a dedicated absolute endpoint/database.
+It does not reset the system collector or delete an existing database.
 
-- `/var/ldwatch` for `events.db`
-- `/run/ldwatch` for `ldwatch.sock`
+The initial audited /bin/true run has no approved profile and produces coverage
+alerts. The script profiles, approves and activates production version 1,
+checks that the clean rerun adds no alerts, then loads one harmless deviation
+library and checks one additional UNKNOWN_SO. It exports HIGH alerts.
 
-It also rebuilds `audit/audit.so` and `bin/collector`.
+## Verified output
 
-Important:
+Re-run on 2026-10-07, directory /tmp/ldwatch-t11-20261007:
 
-- `LD_AUDIT` must point to `audit/audit.so`, not `audit/audit.o`
-- if you changed socket or collector code, rebuild before testing
-- the collector now creates `/run/ldwatch/ldwatch.sock` with permissions that allow non-root audited processes to connect
-
-## Terminal 1 — start collector
-
-```sh
-./bin/collector
+```text
+T10 demo passed
+database: /tmp/ldwatch-t11-20261007/events.db
+socket: /tmp/ldwatch-t11-20261007/collector.sock
+report: /tmp/ldwatch-t11-20261007/report.json
+alerts: 5 (clean baseline: 4)
 ```
 
-Expected log:
+The four initial MISSING_BASELINE alerts are expected and remain persisted after
+approval. They do not mean the approved clean rerun failed. Load paths vary by
+distribution. This host's selected baseline contained:
 
-```txt
-[socket] listening on /run/ldwatch/ldwatch.sock
+```text
+approved /usr/bin/true (production) v1
+LOAD /lib64/ld-linux-x86-64.so.2 required
+LOAD /usr/lib/libc.so.6 required
+LOAD <main> required
+LOAD linux-vdso.so.1 required
 ```
 
-If you prefer the full explicit form:
+Inspect a retained run (jq is optional):
 
-```sh
-./bin/collector --db /var/ldwatch/events.db --socket /run/ldwatch/ldwatch.sock
+```bash
+bin/ldwatch-cli alerts --db /tmp/ldwatch-demo-review/events.db --severity HIGH
+bin/ldwatch-cli baseline show --db /tmp/ldwatch-demo-review/events.db \
+  --exe /usr/bin/true --environment-key production
+bin/ldwatch-cli diff --db /tmp/ldwatch-demo-review/events.db \
+  --source events --exe /usr/bin/true --environment-key production
+jq 'length' /tmp/ldwatch-demo-review/report.json
+jq 'map(.Rule) | group_by(.) | map({rule: .[0], count: length})' \
+  /tmp/ldwatch-demo-review/report.json
+jq '.[] | select(.Rule == "UNKNOWN_SO") | .Detail | fromjson' \
+  /tmp/ldwatch-demo-review/report.json
 ```
 
-## Terminal 2 — generate LD_AUDIT events
+Verified report summary:
 
-```sh
-LD_AUDIT=./audit/audit.so ls /tmp
+```json
+[
+  {"rule": "MISSING_BASELINE", "count": 4},
+  {"rule": "UNKNOWN_SO", "count": 1}
+]
 ```
+
+Report output is a top-level array. Detail is a JSON string, decoded above
+using fromjson; report timestamps are Unix nanoseconds. Do not use .alerts.
+Reports apply severity/date filters in SQLite and export all matching rows from
+one snapshot, including historical matches beyond the former 10,000-row cap.
+Rows are ordered by timestamp descending and ID. Later inserts belong to a
+subsequent export. Rows and JSON are buffered in memory, so use date/severity
+filters to keep large exports manageable.
+Diff reports the retained libdeviation.so as UNEXPECTED and does not execute
+a program.
 
 Audit diagnostics are silent by default; the library sends binary events to
 the collector independently. Confirm observations in SQLite or with the CLI.
 Explicit diagnostics require an already nonblocking stderr pipe; see
 [bounded logging policy](audit-logging.md).
 
-## Query SQLite live
+Watch streams stored rows until interrupted:
 
-```sh
-sqlite3 /var/ldwatch/events.db "SELECT id,process_key,pid,exe,event_type,subject_path,origin,timestamp FROM loader_events ORDER BY id LIMIT 10;"
+```bash
+bin/ldwatch-cli watch --db /tmp/ldwatch-demo-review/events.db --after 0
 ```
 
-Optional prettier output:
+## Manual live collection in two terminals
 
-```sh
-sqlite3 /var/ldwatch/events.db ".headers on" ".mode column" "SELECT id,process_key,pid,exe,event_type,subject_path,origin,timestamp FROM loader_events ORDER BY id LIMIT 10;"
+Choose a private directory with no existing collector. Terminal 1:
+
+```bash
+make all
+mkdir -m 700 /tmp/ldwatch-live-review
+bin/collector --db /tmp/ldwatch-live-review/events.db \
+  --socket /tmp/ldwatch-live-review/collector.sock --environment production
 ```
 
-To verify the schema exists:
+Terminal 2, from the same checkout:
 
-```sh
-sqlite3 /var/ldwatch/events.db ".tables"
+```bash
+LDWATCH_SOCKET=/tmp/ldwatch-live-review/collector.sock \
+  LDWATCH_VERBOSE=0 LD_AUDIT="$PWD/audit/audit.so" /bin/true
+sqlite3 /tmp/ldwatch-live-review/events.db \
+  'SELECT id,process_key,pid,exe,event_type,subject_path,origin FROM loader_events ORDER BY id LIMIT 10;'
+bin/ldwatch-cli alerts --db /tmp/ldwatch-live-review/events.db
 ```
 
-You should see `loader_events`, `process_instances`, baseline tables, and `alerts`. The old `so_events`, `symbol_events`, and `processes` tables contain legacy evidence only; see [T05 persistence](persistence.md).
+To build a trusted profile, run baseline profile, inspect, approve and use,
+each with the same --db, --exe /usr/bin/true and --environment-key production.
+Use the version printed by approve. Review candidates before approving:
+reprofiling after injection can teach an unwanted library. Ctrl-C stops the
+collector; it does not remove the retained database.
 
-## Docker flow
+Socket access is 0660, not world-writable. Both processes must have permission
+to access the private parent and socket. Use audit/audit.so, not an object .o.
+Sender LDWATCH_SOCKET must match the collector's absolute endpoint.
 
-Use Docker only if both terminals attach to the same running container.
+## Container workspace
 
-Example:
-
-```sh
-docker build -t ld-watch-dev ./docker
-docker run -dit --name ldwatch-demo -v "$(pwd)":/ld-watch ld-watch-dev bash
-docker exec -it ldwatch-demo bash
-docker exec -it ldwatch-demo bash
+```bash
+docker compose build dev
+docker compose run --rm dev
+# Inside the container:
+make all
+LDWATCH_DEMO_DIR=/tmp/demo bash scripts/demo_t10.sh
 ```
 
-Then inside container `ldwatch-demo`:
+The read-only source copy is used in tmpfs; outputs disappear on container exit.
+For manual two-terminal use, both terminals must attach to the same running
+container and use the same database/socket. Separate containers do not share
+those paths by default. No writable host source mount, ptrace capability or
+seccomp exception is required by these routine fixtures.
 
-Terminal 1:
+## Troubleshooting and scope
 
-```sh
-cd /ld-watch
-make audit collector
-mkdir -p /var/ldwatch /run/ldwatch
-./bin/collector --db /var/ldwatch/events.db --socket /run/ldwatch/ldwatch.sock
-```
+No telemetry: confirm .so built, collector running, endpoint matches, and
+permissions allow connecting. Logs alone are not proof of persisted rows.
+No tables: check the database path and container, rather than querying legacy
+so_events as the current event table. Canonical events are in loader_events.
 
-Terminal 2:
-
-```sh
-cd /ld-watch
-LD_AUDIT=./audit/audit.so ls /tmp
-sqlite3 /var/ldwatch/events.db ".tables"
-sqlite3 /var/ldwatch/events.db "SELECT id,process_key,pid,exe,event_type,subject_path,origin,timestamp FROM loader_events ORDER BY id LIMIT 10;"
-```
-
-Do not run the collector in one container and `LD_AUDIT` or `sqlite3` in another. Each container has its own `/run` and `/var`, so the socket and database will not be shared unless you explicitly mount them.
-
-## Troubleshooting
-
-If `LD_AUDIT=./audit/audit.o ...` fails:
-
-```txt
-ERROR: ld.so: object './audit/audit.o' cannot be loaded as audit interface
-```
-
-Use `audit/audit.so`. The `.o` file is not the loadable audit library.
-
-If SQLite says:
-
-```txt
-Error: in prepare, no such table: so_events
-```
-
-That means the collector did not create or migrate the database you are querying. Common causes:
-
-- the collector is not running
-- the collector exited before you queried the DB
-- you are querying the DB in a different Docker container than the collector
-- you are looking at a newly created empty DB file
-
-If you see audit stderr logs but no rows on the host machine:
-
-- make sure you restarted the rebuilt `bin/collector`
-- confirm the collector socket exists:
-
-```sh
-ls -l /run/ldwatch/ldwatch.sock
-```
-
-- confirm the socket is writable by the audited process, for example `srw-rw-rw-` or another mode that permits your user to connect
-
-If you changed the audit header, IPC code, or collector:
-
-```sh
-make audit collector
-```
-
-## Stop
-
-Press `Ctrl-C` in Terminal 1.
+Load origin UNKNOWN is expected even for the harmless preload: the source
+does not affirmatively establish mechanism. This demo validates UNKNOWN_SO,
+not PRELOAD_PRIVILEGED, malware prevention or three packaged attack scenarios.
+See [threat model](threat-model.md) and [T09 evidence](t09-evidence.md).

@@ -1,12 +1,48 @@
 # LD-Watch issue register
 
-Review date: 2026-09-29. Status: open unless explicitly updated after implementation and validation.
+Review date: 2026-09-29. Findings describe that historical checkout. Current
+dispositions below were reconciled 2026-10-07 and supersede intermediate notes.
+GitHub closure is separate from implementation status.
 
 This is a source-review baseline, not runtime certification. Linux builds and tests were not run during the review: Go was unavailable on the Windows host PATH and WSL enumeration returned access denied. Findings describe the reviewed implementation; environment-dependent outcomes still require Linux validation.
 
 Read [fix plans](fixes.md) for remediation and [ordered pending tasks](pending-tasks.md) for execution order. Issue IDs are stable across all three files. This document owns the problem descriptions; the task checklist owns completion status.
 
-## Priority
+## Current dispositions (T11)
+
+| ID | Disposition | Implementation / evidence |
+| --- | --- | --- |
+| I01 | Fixed | Connected detection and persisted alerts; [T07](pending-tasks.md#t07--repair-rules-and-connect-alerts), [demo](collector_demo.md) |
+| I02 | Fixed bounded transport; drops accepted | Nonblocking seqpacket, reconnect/fork, no SIGPIPE; [T09](t09-evidence.md) |
+| I03 | Fixed | Bounded shutdown and idle-client tests; T04 |
+| I04 | Fixed ingress; record trust limit accepted | 0660 socket, peer metadata, connection limits; [threat model](threat-model.md) |
+| I05 | Fixed attribution; uncertainty retained | Process lifetime/source identity; [persistence](persistence.md) |
+| I06 | Fixed | Searches excluded from load learning/rules; T06/T07 |
+| I07 | Fixed | Executable/environment approval, versions, optional loads; T06 |
+| I08 | Fixed | Shared canonical provider/path comparison; T07 |
+| I09 | Fixed | Guarded setup; isolated demo refuses existing DB/socket; [demo](collector_demo.md) |
+| I10 | Fixed | Active endpoint and file/symlink validation; T04 |
+| I11 | Fixed truthful origin; preload certainty deferred | UNKNOWN loads; [protocol](protocol.md) |
+| I12 | Fixed | Unload cleanup/capacity degradation; T03/T09 |
+| I13 | Fixed | Full uint64 formatter fixture; T02/T03 |
+| I14 | Fixed | Shared executable resolver in helpers; [persistence](persistence.md) |
+| I15 | Fixed | Absolute endpoint override and real isolated demo; T03/T10 |
+| I16 | Fixed | Worker validation before resource setup; T04 |
+| I17 | Fixed v1; legacy intentionally rejected | Explicit encoding and real C decode tests; [protocol](protocol.md) |
+| I18 | Fixed failure policy; durable recovery deferred | Busy/full rollback, counters, explicit retention; [persistence](persistence.md) |
+| I19 | Fixed | Initialization cleanup/migration rollback tests; T05 |
+| I20 | Fixed | alerts/baseline/watch/diff/report and validation; T08 |
+| I21 | Deferred | PRELOAD_PRIVILEGED lacks origin/privilege evidence; [threat model](threat-model.md) |
+| I22 | Fixed scoped evidence; universal performance/no-loss excluded | Real source/lifecycle, CLI integration and measurements; [T09](t09-evidence.md) |
+| I23 | Fixed CI delivery | Artifact checks, race/vet/C fixtures, aligned Go; [live CI](https://github.com/shubh1855/LD-Watch/actions/runs/37483536116) |
+| I24 | Reconciled T11 | README, architecture, protocol, demo/report and [review evidence](t11-evidence.md) |
+| I25 | Fixed routine configuration | Read-only source/root, tmpfs, no ptrace/seccomp exceptions; [review evidence](t11-evidence.md) |
+
+[Pending tasks](pending-tasks.md) records implementation/test details for T01–T10.
+Disabled branch protection, manual IEEE metadata checks and fresh container
+runtime evidence remain explicit follow-ups in [T11 evidence](t11-evidence.md).
+
+## Historical priorities
 
 - **P1:** Resolve before claiming reliable end-to-end detection.
 - **P2:** Resolve before broader use; some are prerequisites for P1 work.
@@ -83,8 +119,18 @@ and handles newly generated SIGPIPE without changing application descriptor
 flags or signal disposition. Normal socket telemetry remains independent.
 
 Evidence: C suite passed 17/17; collector/integration race tests passed.
-See [logging policy](audit-logging.md). GitHub #64 closes when the fix merges;
-#65–#68 remain separate issues.
+See [logging policy](audit-logging.md). GitHub #64 was fixed in merged PR #69;
+#65–#68 have separate dispositions below.
+
+## Current follow-up dispositions after main synchronization
+
+| GitHub issue | Status and evidence |
+| --- | --- |
+| #64 | Fixed by PR #69: silent default and bounded opt-in diagnostics; audit regression suite |
+| #65 | Connected-parent immediate fork delivery fixed by PR #70; failed-initial-connection edge remains documented in the PR review |
+| #66 | Fixed by PR #73: SQL severity/date filtering and one unbounded snapshot read prevent truncation and concurrent-insert duplicates; `cmd/ldwatch-cli/report_test.go` covers large, historical, filtered and concurrent exports |
+| #67 | Fixed by PR #71: optional-library absence excluded from MISSING; required/unexpected cases retained |
+| #68 | Fixed by PR #72: all approved providers per symbol accepted; sorted provider-set alert detail and regression coverage |
 
 ## Technical reference links
 

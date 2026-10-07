@@ -1,6 +1,8 @@
 # LD-Watch remediation and implementation plans
 
-Review date: 2026-09-29. These are proposed changes, not implemented fixes.
+Review date: 2026-09-29. These are historical remediation plans, not a current
+open-work list. [Pending tasks](pending-tasks.md) records execution and evidence;
+[issue dispositions](issues.md#current-dispositions-t11) records current status.
 
 See [issues](issues.md) for evidence and impact. Execute through [pending tasks](pending-tasks.md), which is the single completion checklist. Do not implement these sections independently in document order: several share a protocol, schema or lifecycle dependency.
 

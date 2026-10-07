@@ -55,7 +55,7 @@ Terminal 1:
 
 Terminal 2:
   LD_AUDIT=./audit/audit.so ls /tmp
-  sqlite3 /var/ldwatch/events.db "SELECT id,pid,exe,so_path,mechanism,timestamp FROM so_events LIMIT 10;"
+  sqlite3 /var/ldwatch/events.db "SELECT id,process_key,pid,exe,event_type,subject_path,origin,timestamp FROM loader_events ORDER BY id LIMIT 10;"
 
 If sqlite3 is missing:
   sudo apt-get update && sudo apt-get install -y sqlite3

@@ -4,12 +4,13 @@ Implemented and locally verified on Linux, 2026-10-01. The collector's
 canonical telemetry source is now `loader_events`, with `process_instances` as
 its lifetime registry. `schema.sql` describes the final schema for sqlc;
 `migrations/001_legacy.sql`, `002_attribution.sql`,
-`003_unknown_timestamps.sql`, and `004_baseline_selection.sql` are the runtime
-migrations.
+`003_unknown_timestamps.sql`, `004_baseline_selection.sql`, and
+`005_missing_baseline_alert.sql` are the current runtime migrations. T05/T06
+originally established versions 1–4; T07 added version 5.
 
 ## Migration and compatibility
 
-Fresh and unversioned databases migrate transactionally to version 4. Version
+Fresh and unversioned databases migrate transactionally to version 5. Version
 markers are stored in `schema_migrations`; reruns do not duplicate imported
 rows. Markers must form a contiguous sequence starting at version 1; gaps,
 duplicates, non-positive markers, and newer versions are rejected before any
@@ -33,6 +34,11 @@ queries over identified `loader_events`. Migration 004 adds durable learning
 cursors, candidate optionality, and selected-version state scoped by executable
 and explicit environment key. Approval freezes candidate entries into a numbered
 version; reload returns only the selected approved version.
+
+Migration 005 extends the canonical alert rule constraint to include
+`MISSING_BASELINE`. Existing canonical alerts are copied unchanged, retaining
+their IDs, JSON detail, timestamps and deduplication keys; alert indexes are
+recreated. A missing selected profile is a coverage alert, not a clean result.
 
 Symbol-provider learning uses `SYMBOL_BIND.subject_path` as the provider and
 `related_path` as the requester. Truncated provider, requester, or symbol fields
